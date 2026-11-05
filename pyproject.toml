@@ -1,0 +1,29 @@
+[project]
+name = "qoe-streaming"
+version = "0.1.0"
+description = "Real-time video QoE monitoring: Kafka, Spark Structured Streaming, ClickHouse, Grafana on GKE"
+requires-python = ">=3.12,<3.13"
+
+[tool.uv.workspace]
+members = ["apps/generator", "apps/streaming"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.8",
+    "yamllint>=1.35",
+]
+
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
+testpaths = ["apps"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S101"]

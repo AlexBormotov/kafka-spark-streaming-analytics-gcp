@@ -1,0 +1,22 @@
+# Local working material, not part of the project
+GRILL.md
+TASK.md
+ai-factory-kit/
+
+# Secrets and local environment
+.env
+*.tfvars
+!*.tfvars.example
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.cache/
+.ruff_cache/
+.pytest_cache/

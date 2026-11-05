@@ -1,0 +1,26 @@
+# Each job runs exactly one make target, the same one a contributor runs locally.
+stages:
+  - lint
+  - test
+
+default:
+  image: ghcr.io/astral-sh/uv:0.9.24-python3.12-bookworm-slim
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq make > /dev/null
+  cache:
+    key:
+      files: [uv.lock]
+    paths: [.cache/uv]
+
+variables:
+  UV_CACHE_DIR: .cache/uv
+
+lint:
+  stage: lint
+  script:
+    - make lint
+
+test:
+  stage: test
+  script:
+    - make test
