@@ -12,7 +12,13 @@ Work units are defined in `plan.md`.
   - [x] CI green on 6393009, 173cd5b, c3ba4a6
   - [x] plan amendment A1 (`deploy/values/common/`) approved by owner
   - Known gap: the `up` health wait passes a workload that flaps; stability is checked by hand.
-- [ ] U2 Kafka, schema registry and topics
+- [x] U2 Kafka, schema registry and topics
+  - [x] risk spike passed: confluent-kafka AvroSerializer/Deserializer work against Apicurio
+    `/apis/ccompat/v7`; Confluent framing (magic 0 + schema id) confirmed. Karapace not needed.
+  - [x] `make up ENV=local` from scratch, exit 0 in 296 s; `make smoke-registry` green (2026-11-06)
+  - [x] negative control: global compatibility NONE -> smoke fails with exit 2
+  - [x] CI green on 926d06c
+  - Found on the way: Apicurio 3 health endpoints are on management port 9000 (404 on 8080).
 - [ ] U3 Event generator
 - [ ] U4 ClickHouse schema
 - [ ] U5 Spark streaming job
