@@ -5,6 +5,7 @@ ai-factory-kit/
 
 # Secrets and local environment
 .env
+.github-mirror-token
 *.tfvars
 !*.tfvars.example
 
