@@ -44,6 +44,7 @@ clickhouse:
   image: clickhouse/clickhouse-server:26.8.33.10
   # Created by `make up` (user `qoe`, key `password`).
   credentialsSecret: clickhouse-credentials
+  allowedNetwork: 10.0.0.0/8
   # Empty size: data lives in the pod, lost on restart. Enough for a local run.
   storage:
     size: ""

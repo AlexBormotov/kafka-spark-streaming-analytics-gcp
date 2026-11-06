@@ -9,6 +9,7 @@ spec:
   defaults:
     templates:
       podTemplate: clickhouse
+      serviceTemplate: internal
       {{- if $c.storage.size }}
       dataVolumeClaimTemplate: data
       {{- end }}
@@ -20,7 +21,8 @@ spec:
           secretKeyRef:
             name: {{ $c.credentialsSecret }}
             key: password
-      qoe/networks/ip: "::/0"
+      # Pod networks only: kind uses 10.244.0.0/16, GKE pod ranges default to 10.0.0.0/8.
+      qoe/networks/ip: {{ $c.allowedNetwork | quote }}
       qoe/profile: default
     profiles:
       # Replay safety: a repeated insert_deduplication_token is dropped in the materialized
@@ -32,6 +34,16 @@ spec:
           shardsCount: 1
           replicasCount: 1
   templates:
+    # Explicit ClusterIP: older operator versions defaulted to a LoadBalancer.
+    serviceTemplates:
+      - name: internal
+        spec:
+          type: ClusterIP
+          ports:
+            - name: http
+              port: 8123
+            - name: tcp
+              port: 9000
     podTemplates:
       - name: clickhouse
         spec:
