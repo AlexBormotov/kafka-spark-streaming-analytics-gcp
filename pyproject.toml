@@ -9,6 +9,7 @@ members = ["apps/generator", "apps/streaming"]
 
 [dependency-groups]
 dev = [
+    "confluent-kafka[avro,schemaregistry]==2.16.1",
     "pytest>=8.3",
     "ruff>=0.8",
     "yamllint>=1.35",

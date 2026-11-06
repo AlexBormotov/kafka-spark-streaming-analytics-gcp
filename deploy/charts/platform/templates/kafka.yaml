@@ -1,0 +1,41 @@
+{{- $k := .Values.kafka }}
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: dual
+  namespace: {{ $k.namespace }}
+  labels:
+    strimzi.io/cluster: {{ $k.cluster }}
+spec:
+  replicas: {{ $k.replicas }}
+  roles:
+    - controller
+    - broker
+  storage:
+    {{- toYaml $k.storage | nindent 4 }}
+  resources:
+    {{- toYaml $k.resources | nindent 4 }}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: Kafka
+metadata:
+  name: {{ $k.cluster }}
+  namespace: {{ $k.namespace }}
+spec:
+  kafka:
+    version: {{ $k.version }}
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+    config:
+      # Topics are declared as KafkaTopic resources; nothing is created by a typo in a client.
+      auto.create.topics.enable: false
+      default.replication.factor: {{ $k.replicationFactor }}
+      min.insync.replicas: {{ $k.minInsyncReplicas }}
+      offsets.topic.replication.factor: {{ $k.replicationFactor }}
+      transaction.state.log.replication.factor: {{ $k.replicationFactor }}
+      transaction.state.log.min.isr: {{ $k.minInsyncReplicas }}
+  entityOperator:
+    topicOperator: {}

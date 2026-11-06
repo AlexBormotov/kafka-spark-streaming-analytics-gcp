@@ -1,0 +1,14 @@
+kafka:
+  replicas: 3
+  replicationFactor: 3
+  minInsyncReplicas: 2
+  storage:
+    type: persistent-claim
+    size: 20Gi
+    deleteClaim: true
+  resources:
+    requests:
+      cpu: "1"
+      memory: 4Gi
+    limits:
+      memory: 4Gi

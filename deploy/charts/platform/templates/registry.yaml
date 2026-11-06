@@ -1,0 +1,91 @@
+{{- $k := .Values.kafka }}
+{{- $r := .Values.registry }}
+# Apicurio Registry has no official Helm chart (docs/research/l1-versions.md), so it is a plain
+# Deployment. Storage is the kafkasql journal in the same Kafka cluster: no database to run.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: schema-registry
+  namespace: {{ $k.namespace }}
+  labels:
+    app: schema-registry
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: schema-registry
+  template:
+    metadata:
+      labels:
+        app: schema-registry
+    spec:
+      containers:
+        - name: registry
+          image: {{ $r.image }}
+          ports:
+            - name: http
+              containerPort: 8080
+            # Quarkus management interface: health endpoints live here, not on 8080.
+            - name: management
+              containerPort: 9000
+          env:
+            - name: APICURIO_STORAGE_KIND
+              value: kafkasql
+            - name: APICURIO_KAFKASQL_BOOTSTRAP_SERVERS
+              value: {{ $k.cluster }}-kafka-bootstrap.{{ $k.namespace }}.svc:9092
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: management
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: management
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          resources:
+            {{- toYaml $r.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: schema-registry
+  namespace: {{ $k.namespace }}
+spec:
+  selector:
+    app: schema-registry
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+# The global compatibility rule lives in the registry's journal, not in configuration, so it is
+# set through the Confluent-compatible API after every install or upgrade. PUT is idempotent.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: schema-registry-config
+  namespace: {{ $k.namespace }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 30
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: config
+          image: {{ $r.configJobImage }}
+          args:
+            - --fail-with-body
+            - --silent
+            - --show-error
+            - -X
+            - PUT
+            - -H
+            - "Content-Type: application/vnd.schemaregistry.v1+json"
+            - --data
+            - '{"compatibility": "{{ $r.compatibility }}"}'
+            - http://schema-registry.{{ $k.namespace }}.svc:8080/apis/ccompat/v7/config

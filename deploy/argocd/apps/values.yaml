@@ -2,6 +2,8 @@
 env: local
 repoURL: https://gitlab.com/BormotovAV/kafka-spark-streaming-analytics-gcp.git
 targetRevision: main
+# true: Argo CD also deploys the charts under `own`; false: `make dev` deploys them with Helm.
+gitops: false
 
 # Spark Operator creates its job RBAC in `streaming` and fails to start if it is missing.
 namespaces:
@@ -29,3 +31,9 @@ components:
     chart: grafana
     version: 14.4.0
     namespace: monitoring
+
+# Charts in deploy/charts/<name>. The namespace is the Helm release namespace; templates set
+# their own resource namespaces.
+own:
+  platform:
+    namespace: kafka

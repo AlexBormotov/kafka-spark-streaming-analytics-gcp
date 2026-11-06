@@ -10,7 +10,7 @@ Work units are defined in `plan.md`.
   - [x] `make up ENV=local` from scratch: exit 0 in 134 s, all 5 Applications Synced/Healthy (2026-11-06)
   - [x] stability: 4 min after `up`, Grafana still on one ReplicaSet (restart loop fixed in c3ba4a6)
   - [x] CI green on 6393009, 173cd5b, c3ba4a6
-  - [ ] plan amendment A1 (`deploy/values/common/`) approved by owner
+  - [x] plan amendment A1 (`deploy/values/common/`) approved by owner
   - Known gap: the `up` health wait passes a workload that flaps; stability is checked by hand.
 - [ ] U2 Kafka, schema registry and topics
 - [ ] U3 Event generator

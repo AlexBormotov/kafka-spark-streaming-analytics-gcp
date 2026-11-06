@@ -1,0 +1,5 @@
+apiVersion: v2
+name: platform
+description: Stateful platform services - Kafka cluster and topics, Apicurio schema registry.
+type: application
+version: 0.1.0

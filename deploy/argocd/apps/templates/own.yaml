@@ -1,0 +1,31 @@
+{{- /* Charts from this repository. Without gitops, `make dev` installs them with Helm instead. */}}
+{{- if .Values.gitops }}
+{{- range $name, $c := .Values.own }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $name }}
+  namespace: argocd
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ $c.namespace }}
+  source:
+    repoURL: {{ $.Values.repoURL }}
+    targetRevision: {{ $.Values.targetRevision }}
+    path: deploy/charts/{{ $name }}
+    helm:
+      releaseName: {{ $name }}
+      ignoreMissingValueFiles: true
+      valueFiles:
+        - values-{{ $.Values.env }}.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+{{- end }}
+{{- end }}

@@ -19,6 +19,8 @@ spec:
           value: ENV
         - name: targetRevision
           value: REVISION
+        - name: gitops
+          value: "GITOPS"
   syncPolicy:
     automated:
       prune: true

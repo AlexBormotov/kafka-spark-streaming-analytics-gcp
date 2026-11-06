@@ -215,7 +215,7 @@ unit lands as one reviewed change; the ceiling is set after layer 1 from measure
 
 ## Amendments
 
-**A1 (U1, 2026-11-06, pending owner approval).** Add `deploy/values/common/` to the U1 file set.
+**A1 (U1, 2026-11-06, approved by owner 2026-11-06).** Add `deploy/values/common/` to the U1 file set.
 Evidence: with only `local/` and `gke/`, every upstream chart's values would be written twice and
 drift. Argo CD loads `common/<component>.yaml` then `<env>/<component>.yaml`
 (`ignoreMissingValueFiles: true`), so an environment file holds only its differences.

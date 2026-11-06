@@ -14,6 +14,12 @@ KIND_CLUSTER := qoe
 ARGOCD_CHART_VERSION := 10.11.7
 REVISION ?= $(shell git rev-parse --abbrev-ref HEAD)
 WAIT_TIMEOUT ?= 900s
+# GITOPS=1: Argo CD deploys this repository's charts too. Otherwise `make dev` deploys them.
+GITOPS ?= 0
+GITOPS_BOOL := $(if $(filter 1 true,$(GITOPS)),true,false)
+# Own charts in install order, with the Helm release namespace of each.
+OWN_CHARTS := platform
+NS_platform := kafka
 
 ifeq ($(ENV),local)
 KUBE_CONTEXT := kind-$(KIND_CLUSTER)
@@ -70,11 +76,25 @@ up: check-env check-pushed cluster ## Create the cluster, install Argo CD, sync 
 	@$(KUBECTL) -n monitoring get secret grafana-admin >/dev/null 2>&1 || \
 		$(KUBECTL) -n monitoring create secret generic grafana-admin --from-literal=admin-user=admin \
 		--from-literal=admin-password="$$(openssl rand -base64 18)"
-	sed -e 's/REVISION/$(REVISION)/g' -e 's/value: ENV/value: $(ENV)/' deploy/argocd/root.yaml | $(KUBECTL) apply -f -
+	sed -e 's/REVISION/$(REVISION)/g' -e 's/value: ENV/value: $(ENV)/' -e 's/"GITOPS"/"$(GITOPS_BOOL)"/' \
+		deploy/argocd/root.yaml | $(KUBECTL) apply -f -
 	$(KUBECTL) -n argocd wait application/root --for=jsonpath='{.status.sync.status}'=Synced --timeout=$(WAIT_TIMEOUT)
 	$(KUBECTL) -n argocd wait applications --all --for=jsonpath='{.status.sync.status}'=Synced --timeout=$(WAIT_TIMEOUT)
 	$(KUBECTL) -n argocd wait applications --all --for=jsonpath='{.status.health.status}'=Healthy --timeout=$(WAIT_TIMEOUT)
+	@[ "$(GITOPS_BOOL)" = true ] || $(MAKE) --no-print-directory dev
+	$(KUBECTL) -n kafka wait kafka/qoe --for=condition=Ready --timeout=$(WAIT_TIMEOUT)
 	@$(MAKE) --no-print-directory status
+
+.PHONY: dev
+dev: check-env ## Install or upgrade this repository's charts with Helm (fast loop, no push needed)
+	$(foreach c,$(OWN_CHARTS),$(HELM) upgrade --install $(c) deploy/charts/$(c) \
+		--namespace $(NS_$(c)) --create-namespace --wait --timeout 15m \
+		$(if $(wildcard deploy/charts/$(c)/values-$(ENV).yaml),-f deploy/charts/$(c)/values-$(ENV).yaml) &&) true
+
+.PHONY: smoke-registry
+smoke-registry: check-env ## Round-trip a record through the schema registry with the Confluent client
+	@$(KUBECTL) -n kafka port-forward svc/schema-registry 8081:8080 >/dev/null 2>&1 & pf=$$!; \
+		trap "kill $$pf" EXIT; sleep 3; uv run python scripts/smoke_registry.py http://localhost:8081
 
 .PHONY: status
 status: check-env ## Show Argo CD applications and any pod that is not ready

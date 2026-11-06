@@ -1,0 +1,16 @@
+{{- $k := .Values.kafka }}
+{{- range $t := list .Values.topics.playerEvents .Values.topics.deadLetter }}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: {{ $t.name }}
+  namespace: {{ $k.namespace }}
+  labels:
+    strimzi.io/cluster: {{ $k.cluster }}
+spec:
+  partitions: {{ $t.partitions }}
+  replicas: {{ $k.replicationFactor }}
+  config:
+    retention.ms: {{ $t.retentionMs | int64 }}
+{{- end }}
