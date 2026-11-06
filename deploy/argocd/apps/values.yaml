@@ -3,6 +3,10 @@ env: local
 repoURL: https://gitlab.com/BormotovAV/kafka-spark-streaming-analytics-gcp.git
 targetRevision: main
 
+# Spark Operator creates its job RBAC in `streaming` and fails to start if it is missing.
+namespaces:
+  - streaming
+
 # Upstream charts. Versions: docs/research/l1-versions.md.
 components:
   strimzi:

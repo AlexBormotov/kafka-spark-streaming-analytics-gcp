@@ -1,0 +1,8 @@
+{{- /* Namespaces referenced by operators before any workload is deployed there. */}}
+{{- range .Values.namespaces }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ . }}
+{{- end }}
