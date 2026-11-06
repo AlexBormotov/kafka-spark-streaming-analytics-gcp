@@ -6,7 +6,12 @@ Work units are defined in `plan.md`.
   - [x] `make lint test` green locally (2026-11-05); negative control: bad Python or YAML -> exit 2
   - [x] same targets green on GitLab CI, first pipeline on `main` (2026-11-05)
   - [x] `.gitlab/CODEOWNERS` username confirmed (`BormotovAV`)
-- [ ] U1 Local cluster with Argo CD and operators
+- [x] U1 Local cluster with Argo CD and operators
+  - [x] `make up ENV=local` from scratch: exit 0 in 134 s, all 5 Applications Synced/Healthy (2026-11-06)
+  - [x] stability: 4 min after `up`, Grafana still on one ReplicaSet (restart loop fixed in c3ba4a6)
+  - [x] CI green on 6393009, 173cd5b, c3ba4a6
+  - [ ] plan amendment A1 (`deploy/values/common/`) approved by owner
+  - Known gap: the `up` health wait passes a workload that flaps; stability is checked by hand.
 - [ ] U2 Kafka, schema registry and topics
 - [ ] U3 Event generator
 - [ ] U4 ClickHouse schema
