@@ -18,8 +18,11 @@ WAIT_TIMEOUT ?= 900s
 GITOPS ?= 0
 GITOPS_BOOL := $(if $(filter 1 true,$(GITOPS)),true,false)
 # Own charts in install order, with the Helm release namespace of each.
-OWN_CHARTS := platform
+OWN_CHARTS := platform generator
 NS_platform := kafka
+NS_generator := generator
+# Images built from this repository; local runs load them into kind under the :dev tag.
+IMAGES := generator
 
 ifeq ($(ENV),local)
 KUBE_CONTEXT := kind-$(KIND_CLUSTER)
@@ -85,8 +88,13 @@ up: check-env check-pushed cluster ## Create the cluster, install Argo CD, sync 
 	$(KUBECTL) -n kafka wait kafka/qoe --for=condition=Ready --timeout=$(WAIT_TIMEOUT)
 	@$(MAKE) --no-print-directory status
 
+.PHONY: images
+images: check-env ## Build this repository's images and load them into the kind cluster
+	$(foreach i,$(IMAGES),docker build -q -f apps/$(i)/Dockerfile -t qoe-$(i):dev . && \
+		kind load docker-image qoe-$(i):dev --name $(KIND_CLUSTER) &&) true
+
 .PHONY: dev
-dev: check-env ## Install or upgrade this repository's charts with Helm (fast loop, no push needed)
+dev: check-env images ## Build images, install or upgrade this repository's charts with Helm (no push needed)
 	$(foreach c,$(OWN_CHARTS),$(HELM) upgrade --install $(c) deploy/charts/$(c) \
 		--namespace $(NS_$(c)) --create-namespace --wait --timeout 15m \
 		$(if $(wildcard deploy/charts/$(c)/values-$(ENV).yaml),-f deploy/charts/$(c)/values-$(ENV).yaml) &&) true

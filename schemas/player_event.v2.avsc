@@ -1,0 +1,33 @@
+{
+  "type": "record",
+  "name": "PlayerEvent",
+  "namespace": "qoe.player",
+  "doc": "One event emitted by a video player during a playback session. v2 adds player_version.",
+  "fields": [
+    {"name": "event_id", "type": {"type": "string", "logicalType": "uuid"}, "doc": "Deduplication key."},
+    {"name": "event_ts", "type": {"type": "long", "logicalType": "timestamp-millis"}, "doc": "Event time, UTC."},
+    {"name": "session_id", "type": "string", "doc": "Playback session; Kafka message key."},
+    {"name": "user_id", "type": "string"},
+    {"name": "title_id", "type": "string"},
+    {"name": "cdn", "type": "string"},
+    {"name": "isp", "type": "string"},
+    {"name": "device", "type": "string"},
+    {"name": "country", "type": "string", "doc": "ISO 3166-1 alpha-2."},
+    {
+      "name": "event_type",
+      "type": {
+        "type": "enum",
+        "name": "EventType",
+        "symbols": ["UNKNOWN", "START", "PLAY", "REBUFFER", "BITRATE_CHANGE", "ERROR", "STOP", "HEARTBEAT"],
+        "default": "UNKNOWN",
+        "doc": "UNKNOWN is the reader default, so a producer may add a symbol without breaking consumers."
+      }
+    },
+    {"name": "bitrate_kbps", "type": ["null", "int"], "default": null},
+    {"name": "rebuffer_ms", "type": ["null", "int"], "default": null, "doc": "Stall duration, REBUFFER events."},
+    {"name": "startup_ms", "type": ["null", "int"], "default": null, "doc": "Time to first frame, START events."},
+    {"name": "error_code", "type": ["null", "string"], "default": null},
+    {"name": "error_message", "type": ["null", "string"], "default": null},
+    {"name": "player_version", "type": ["null", "string"], "default": null, "doc": "Added in v2."}
+  ]
+}

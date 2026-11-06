@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: generator
+  labels:
+    app: generator
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app: generator
+  template:
+    metadata:
+      labels:
+        app: generator
+    spec:
+      containers:
+        - name: generator
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: GEN_BOOTSTRAP
+              value: {{ .Values.kafka.bootstrap | quote }}
+            - name: GEN_TOPIC
+              value: {{ .Values.kafka.topic | quote }}
+            - name: GEN_REGISTRY
+              value: {{ .Values.registry.url | quote }}
+            - name: GEN_RATE
+              value: {{ .Values.ratePerPod | quote }}
+            - name: GEN_SESSIONS
+              value: {{ .Values.sessionsPerPod | quote }}
+            - name: GEN_SCHEMA
+              value: {{ .Values.schema | quote }}
+            {{- with .Values.inject }}
+            - name: GEN_INJECT
+              value: {{ . | quote }}
+            {{- end }}
+            - name: GEN_LATE_SHARE
+              value: {{ .Values.anomalies.lateShare | quote }}
+            - name: GEN_DUPLICATE_SHARE
+              value: {{ .Values.anomalies.duplicateShare | quote }}
+            - name: GEN_MALFORMED_SHARE
+              value: {{ .Values.anomalies.malformedShare | quote }}
+            - name: GEN_HOT_TITLE_SHARE
+              value: {{ .Values.anomalies.hotTitleShare | quote }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

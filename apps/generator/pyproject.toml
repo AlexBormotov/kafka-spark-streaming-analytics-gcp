@@ -3,7 +3,9 @@ name = "qoe-generator"
 version = "0.1.0"
 description = "Synthetic video player event generator"
 requires-python = ">=3.12,<3.13"
-dependencies = []
+dependencies = [
+    "confluent-kafka[avro,schemaregistry]==2.16.1",
+]
 
 [build-system]
 requires = ["hatchling"]

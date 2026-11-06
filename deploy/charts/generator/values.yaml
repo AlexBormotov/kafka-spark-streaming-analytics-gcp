@@ -1,0 +1,31 @@
+# Zero replicas by default: `make up` installs the chart idle, `make demo` starts the load.
+replicas: 0
+ratePerPod: 5000
+sessionsPerPod: 2000
+
+image:
+  repository: qoe-generator
+  tag: dev
+  pullPolicy: IfNotPresent
+
+kafka:
+  bootstrap: qoe-kafka-bootstrap.kafka.svc:9092
+  topic: player-events
+registry:
+  url: http://schema-registry.kafka.svc:8080
+
+schema: v1
+# Example: cdn=cdn-b,rebuffer_ratio=0.3
+inject: ""
+anomalies:
+  lateShare: 0
+  duplicateShare: 0
+  malformedShare: 0
+  hotTitleShare: 0
+
+resources:
+  requests:
+    cpu: "1"
+    memory: 256Mi
+  limits:
+    memory: 512Mi

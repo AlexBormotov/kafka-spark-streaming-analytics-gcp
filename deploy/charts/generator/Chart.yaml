@@ -1,0 +1,5 @@
+apiVersion: v2
+name: generator
+description: Synthetic player event load. Total rate = replicas x ratePerPod.
+type: application
+version: 0.1.0

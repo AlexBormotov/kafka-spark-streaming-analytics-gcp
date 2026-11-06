@@ -19,7 +19,12 @@ Work units are defined in `plan.md`.
   - [x] negative control: global compatibility NONE -> smoke fails with exit 2
   - [x] CI green on 926d06c
   - Found on the way: Apicurio 3 health endpoints are on management port 9000 (404 on 8080).
-- [ ] U3 Event generator
+- [x] U3 Event generator
+  - [x] 16 unit tests: Avro v1/v2 validity, identity contract, late share, per-CDN injection,
+    hot title, duplicate and malformed shares, Confluent framing, key = session_id
+  - [x] mutation check: disabling injection or late events turns exactly its own test red
+  - [x] throughput measured in kind: 41-66 k events/s per pod, 0 failures (docs/research)
+  - Owner-visible note: one pod covers the nominal 20 k/s, the 10-20 k/s estimate was low.
 - [ ] U4 ClickHouse schema
 - [ ] U5 Spark streaming job
 - [ ] U6 Grafana dashboards and alerts

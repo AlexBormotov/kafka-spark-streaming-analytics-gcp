@@ -24,6 +24,19 @@ work unit that depends on them is considered done.
 | Terraform google provider | 8.x | https://github.com/hashicorp/terraform-provider-google/releases | `google_billing_budget` and `google_cloud_scheduler_job` with `oauth_token` exist. Scheduler calling `DELETE` on the GKE API is **unverified** |
 | GitLab CI -> GCP | `id_tokens` + Workload Identity Federation | https://docs.gitlab.com/ci/cloud_services/google_cloud/ | GitLab.com also offers the Google Cloud IAM integration (`identity: google_cloud`) |
 
+## Measured
+
+| What | Result | How |
+| --- | --- | --- |
+| confluent-kafka 2.16.1 on Python 3.12 (Windows wheel) | installs and runs | `uv sync`, 2026-11-06 |
+| Apicurio ccompat with `AvroSerializer` | byte-compatible, Confluent framing | `make smoke-registry`, 2026-11-06 |
+| Apicurio 3 health endpoints | `/health/*` on management port 9000; 404 on 8080 | probe test, 2026-11-06 |
+| Generator, generation + Avro serialization only | 75 000 events/s, one process | `--dry-run`, laptop, 2026-11-06 |
+| Generator into Kafka, one pod, kind | 41 000-66 000 events/s, 0 delivery failures | 60 s at target 200 000/s, 1 broker; 4.64 M records in topic, partitions 375 k-403 k |
+
+Consequence: nominal 20 000 events/s needs one generator pod; the demo uses 2 pods x 10 000/s so
+that scaling is visible, and up to 50 000/s fits in 2-3 pods.
+
 ## Design-relevant findings
 
 1. Spark `from_avro` does not understand the Confluent wire format (magic byte + 4-byte schema id).
