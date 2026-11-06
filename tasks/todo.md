@@ -25,7 +25,7 @@ Work units are defined in `plan.md`.
   - [x] mutation check: disabling injection or late events turns exactly its own test red
   - [x] throughput measured in kind: 41-66 k events/s per pod, 0 failures (docs/research)
   - Owner-visible note: one pod covers the nominal 20 k/s, the 10-20 k/s estimate was low.
-- [ ] U4 ClickHouse schema (plan amendment A2 approved 2026-11-06)
+- [x] U4 ClickHouse schema (plan amendment A2 approved 2026-11-06)
   - [x] `make test-integration`: replaying a micro-batch with rows in a different order leaves raw
     counts, `FINAL` counts, `qoe_10s` and `qoe_1m` unchanged (3 tests, ClickHouse 26.8.33.10)
   - [x] mutation check, each turns the replay test red: no token; MV dedup setting 0; no dedup
@@ -34,7 +34,8 @@ Work units are defined in `plan.md`.
   - [x] `make dev` in kind: CHI Completed, schema Job applied 6 objects, no Keeper; user `qoe`
     authenticates from the Secret, wrong password and passwordless `default` from another pod
     are rejected
-  - [ ] CI job `test-integration` green
+  - [x] CI green on ef497fb and fa8f76f (`test-integration` with a ClickHouse service)
+  - [x] security review: Service pinned to ClusterIP, user `qoe` limited to 10.0.0.0/8 (fa8f76f)
 - [ ] U5 Spark streaming job
 - [ ] U6 Grafana dashboards and alerts
 - [ ] U7 `make verify-l1` and the local completion run
