@@ -66,6 +66,10 @@ up: check-env check-pushed cluster ## Create the cluster, install Argo CD, sync 
 	$(HELM) upgrade --install argocd argo-cd --repo https://argoproj.github.io/argo-helm \
 		--version $(ARGOCD_CHART_VERSION) --namespace argocd --create-namespace \
 		-f deploy/values/common/argocd.yaml --wait --timeout 10m
+	@$(KUBECTL) create namespace monitoring --dry-run=client -o yaml | $(KUBECTL) apply -f - >/dev/null
+	@$(KUBECTL) -n monitoring get secret grafana-admin >/dev/null 2>&1 || \
+		$(KUBECTL) -n monitoring create secret generic grafana-admin --from-literal=admin-user=admin \
+		--from-literal=admin-password="$$(openssl rand -base64 18)"
 	sed -e 's/REVISION/$(REVISION)/g' -e 's/value: ENV/value: $(ENV)/' deploy/argocd/root.yaml | $(KUBECTL) apply -f -
 	$(KUBECTL) -n argocd wait application/root --for=jsonpath='{.status.sync.status}'=Synced --timeout=$(WAIT_TIMEOUT)
 	$(KUBECTL) -n argocd wait applications --all --for=jsonpath='{.status.sync.status}'=Synced --timeout=$(WAIT_TIMEOUT)
@@ -77,6 +81,11 @@ status: check-env ## Show Argo CD applications and any pod that is not ready
 	@$(KUBECTL) -n argocd get applications
 	@echo "Pods not ready:"
 	@$(KUBECTL) get pods -A --no-headers | awk '$$4 != "Completed" && ($$4 != "Running" || split($$3,a,"/") && a[1] != a[2])' || true
+
+.PHONY: grafana
+grafana: check-env ## Print the Grafana admin password and forward http://localhost:3000
+	@echo "admin / $$($(KUBECTL) -n monitoring get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d)"
+	$(KUBECTL) -n monitoring port-forward svc/grafana 3000:80
 
 .PHONY: down
 down: check-env ## Delete the cluster

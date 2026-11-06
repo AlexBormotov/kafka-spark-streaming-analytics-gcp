@@ -4,17 +4,26 @@ plugins:
 persistence:
   enabled: false
 
-# Dashboards, datasources and alert rules come only from ConfigMaps labelled below.
+# Created once by `make up`, never in git. Without it the chart renders a new random password on
+# every Argo CD refresh, which changes checksum/secret and restarts Grafana in a loop.
+admin:
+  existingSecret: grafana-admin
+  userKey: admin-user
+  passwordKey: admin-password
+
+# Dashboards, datasources and alert rules come only from labelled ConfigMaps in Grafana's own
+# namespace. No searchNamespace: a cluster-wide search would grant Grafana read access to Secrets
+# in every namespace and let any namespace inject a datasource.
 sidecar:
   dashboards:
     enabled: true
     label: grafana_dashboard
-    searchNamespace: ALL
+    resource: configmap
   datasources:
     enabled: true
     label: grafana_datasource
-    searchNamespace: ALL
+    resource: configmap
   alerts:
     enabled: true
     label: grafana_alert
-    searchNamespace: ALL
+    resource: configmap
