@@ -9,14 +9,17 @@ members = ["apps/generator", "apps/streaming"]
 
 [dependency-groups]
 dev = [
+    "clickhouse-connect==1.12.0",
     "pytest>=8.3",
     "ruff>=0.8",
     "yamllint>=1.35",
 ]
 
 [tool.pytest.ini_options]
-addopts = "--import-mode=importlib"
+# Integration tests need a live ClickHouse: `make test-integration` selects them with -m.
+addopts = "--import-mode=importlib -m 'not integration'"
 testpaths = ["apps"]
+markers = ["integration: needs services started by `make test-integration`"]
 
 [tool.ruff]
 line-length = 100

@@ -1,0 +1,99 @@
+{{- $c := .Values.clickhouse }}
+# One shard, one replica, non-replicated engines: no Keeper needed.
+apiVersion: clickhouse.altinity.com/v1
+kind: ClickHouseInstallation
+metadata:
+  name: qoe
+  namespace: {{ $c.namespace }}
+spec:
+  defaults:
+    templates:
+      podTemplate: clickhouse
+      {{- if $c.storage.size }}
+      dataVolumeClaimTemplate: data
+      {{- end }}
+  configuration:
+    users:
+      # Password from the Secret that `make up` creates; never stored in git.
+      qoe/password:
+        valueFrom:
+          secretKeyRef:
+            name: {{ $c.credentialsSecret }}
+            key: password
+      qoe/networks/ip: "::/0"
+      qoe/profile: default
+    profiles:
+      # Replay safety: a repeated insert_deduplication_token is dropped in the materialized
+      # views too. 26.8 defaults to 1; pinned so a server upgrade cannot change it.
+      default/deduplicate_blocks_in_dependent_materialized_views: 1
+    clusters:
+      - name: qoe
+        layout:
+          shardsCount: 1
+          replicasCount: 1
+  templates:
+    podTemplates:
+      - name: clickhouse
+        spec:
+          containers:
+            - name: clickhouse
+              image: {{ $c.image }}
+              resources: {{- toYaml $c.resources | nindent 16 }}
+    {{- if $c.storage.size }}
+    volumeClaimTemplates:
+      - name: data
+        reclaimPolicy: Delete
+        spec:
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: {{ $c.storage.size }}
+    {{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clickhouse-schema
+  namespace: {{ $c.namespace }}
+data:
+  {{- (.Files.Glob "files/clickhouse/*.sql").AsConfig | nindent 2 }}
+---
+# Applies sql/clickhouse/*.sql in file-name order. Every statement is IF NOT EXISTS, so re-runs
+# on upgrade are no-ops. Retries until the server accepts connections.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: clickhouse-schema
+  namespace: {{ $c.namespace }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 30
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: schema
+          image: {{ $c.image }}
+          command: [bash, -ec]
+          args:
+            - |
+              for f in /schema/*.sql; do
+                echo "applying $f"
+                clickhouse-client --host clickhouse-qoe --user qoe --password "$PASSWORD" \
+                  --queries-file "$f"
+              done
+          env:
+            - name: PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $c.credentialsSecret }}
+                  key: password
+          volumeMounts:
+            - name: schema
+              mountPath: /schema
+      volumes:
+        - name: schema
+          configMap:
+            name: clickhouse-schema

@@ -56,6 +56,16 @@ fmt: setup ## Apply formatters
 test: setup ## Unit tests
 	uv run pytest
 
+CLICKHOUSE_IMAGE := clickhouse/clickhouse-server:26.8.33.10
+
+.PHONY: test-integration
+test-integration: setup ## Integration tests; starts a throwaway ClickHouse unless CLICKHOUSE_URL is set
+	@if [ -n "$${CLICKHOUSE_URL:-}" ]; then uv run pytest -m integration; exit; fi; \
+	docker run -d --rm --name qoe-ch-test -p 18124:8123 -e CLICKHOUSE_PASSWORD=test \
+		$(CLICKHOUSE_IMAGE) >/dev/null; \
+	trap 'docker stop qoe-ch-test >/dev/null' EXIT; \
+	CLICKHOUSE_URL=http://default@localhost:18124 CLICKHOUSE_PASSWORD=test uv run pytest -m integration
+
 .PHONY: check-env
 check-env:
 	@[ "$(ENV)" = local ] || { echo "ENV=$(ENV) is not implemented yet (GKE arrives in U8)"; exit 1; }
@@ -79,6 +89,10 @@ up: check-env check-pushed cluster ## Create the cluster, install Argo CD, sync 
 	@$(KUBECTL) -n monitoring get secret grafana-admin >/dev/null 2>&1 || \
 		$(KUBECTL) -n monitoring create secret generic grafana-admin --from-literal=admin-user=admin \
 		--from-literal=admin-password="$$(openssl rand -base64 18)"
+	@$(KUBECTL) create namespace clickhouse --dry-run=client -o yaml | $(KUBECTL) apply -f - >/dev/null
+	@$(KUBECTL) -n clickhouse get secret clickhouse-credentials >/dev/null 2>&1 || \
+		$(KUBECTL) -n clickhouse create secret generic clickhouse-credentials --from-literal=user=qoe \
+		--from-literal=password="$$(openssl rand -hex 16)"
 	sed -e 's/REVISION/$(REVISION)/g' -e 's/value: ENV/value: $(ENV)/' -e 's/"GITOPS"/"$(GITOPS_BOOL)"/' \
 		deploy/argocd/root.yaml | $(KUBECTL) apply -f -
 	$(KUBECTL) -n argocd wait application/root --for=jsonpath='{.status.sync.status}'=Synced --timeout=$(WAIT_TIMEOUT)

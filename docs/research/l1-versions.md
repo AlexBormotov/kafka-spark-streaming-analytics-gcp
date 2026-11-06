@@ -32,6 +32,9 @@ work unit that depends on them is considered done.
 | Apicurio ccompat with `AvroSerializer` | byte-compatible, Confluent framing | `make smoke-registry`, 2026-11-06 |
 | Apicurio 3 health endpoints | `/health/*` on management port 9000; 404 on 8080 | probe test, 2026-11-06 |
 | Generator, generation + Avro serialization only | 75 000 events/s, one process | `--dry-run`, laptop, 2026-11-06 |
+| Altinity operator 0.27.4 user passwords | `k8s_secret_password` is removed: CHI goes `Aborted` (`RemovedSecretRefSyntax`). Use `valueFrom.secretKeyRef` | `make dev`, 2026-11-06 |
+| ClickHouse 26.8 single replica | runs without Keeper; non-replicated engines | `make dev`, 2026-11-06 |
+| ClickHouse insert deduplication | identical blocks are dropped even without a token; a replay with reordered rows is dropped only with `insert_deduplication_token`. `deduplicate_blocks_in_dependent_materialized_views` defaults to 1 in 26.8 | `make test-integration`, 2026-11-06 |
 | Generator into Kafka, one pod, kind | 41 000-66 000 events/s, 0 delivery failures | 60 s at target 200 000/s, 1 broker; 4.64 M records in topic, partitions 375 k-403 k |
 
 Consequence: nominal 20 000 events/s needs one generator pod; the demo uses 2 pods x 10 000/s so

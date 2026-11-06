@@ -220,6 +220,21 @@ Evidence: with only `local/` and `gke/`, every upstream chart's values would be 
 drift. Argo CD loads `common/<component>.yaml` then `<env>/<component>.yaml`
 (`ignoreMissingValueFiles: true`), so an environment file holds only its differences.
 
+**A2 (U4, 2026-11-06, approved by owner 2026-11-06).** Three changes to U4.
+1. Files outside the U4 set: `Makefile` (target `test-integration`; `up` creates the
+   `clickhouse-credentials` Secret), `.gitlab-ci.yml` (job `test-integration` with a ClickHouse
+   service container), `pyproject.toml` and `uv.lock` (dev dependency `clickhouse-connect`, pytest
+   marker `integration`). Evidence: the red check needs a live server, and CI must run the same
+   command a contributor runs.
+2. `qoe_10s` drops `title_id`; only `qoe_1m` carries it. Evidence: 3 CDNs x 8 ISPs x devices x
+   500 titles gives up to ~60 000 rows per 10-second window, scanned by an alert every 10 s.
+   Per-title panels read `qoe_1m`.
+3. Replay safety comes from `insert_deduplication_token`, not from the table engine. Evidence:
+   the integration test replays a micro-batch with rows in a different order. Without a token the
+   materialized views double count (test red); with one token per Spark partition
+   (`qoe-<batch_id>-<partition>`) every result is unchanged. Contract for U5: the writer sets a
+   deterministic token per partition insert, and each partition is exactly one insert query.
+
 ## Order
 
 U0 -> U1 -> U2 -> {U3, U4} -> U5 -> U6 -> U7. U8 runs alongside from U0. Then U9, then U10.

@@ -12,3 +12,12 @@ kafka:
       memory: 4Gi
     limits:
       memory: 4Gi
+clickhouse:
+  storage:
+    size: 20Gi
+  resources:
+    requests:
+      cpu: "2"
+      memory: 8Gi
+    limits:
+      memory: 8Gi

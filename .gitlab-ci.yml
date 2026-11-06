@@ -30,3 +30,14 @@ test:
   stage: test
   script:
     - make test
+
+test-integration:
+  stage: test
+  services:
+    - name: clickhouse/clickhouse-server:26.8.33.10
+      alias: clickhouse
+  variables:
+    CLICKHOUSE_PASSWORD: test
+    CLICKHOUSE_URL: http://default@clickhouse:8123
+  script:
+    - make test-integration

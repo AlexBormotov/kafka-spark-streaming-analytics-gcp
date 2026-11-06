@@ -37,3 +37,19 @@ registry:
     limits:
       memory: 512Mi
   configJobImage: curlimages/curl:8.11.1
+
+clickhouse:
+  # The Altinity operator watches only its own namespace.
+  namespace: clickhouse
+  image: clickhouse/clickhouse-server:26.8.33.10
+  # Created by `make up` (user `qoe`, key `password`).
+  credentialsSecret: clickhouse-credentials
+  # Empty size: data lives in the pod, lost on restart. Enough for a local run.
+  storage:
+    size: ""
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      memory: 2Gi
