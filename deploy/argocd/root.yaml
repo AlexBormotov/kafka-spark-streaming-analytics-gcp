@@ -1,0 +1,25 @@
+# Root of the app-of-apps. `make up` fills ENV and REVISION and applies it.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  source:
+    repoURL: https://gitlab.com/BormotovAV/kafka-spark-streaming-analytics-gcp.git
+    targetRevision: REVISION
+    path: deploy/argocd/apps
+    helm:
+      parameters:
+        - name: env
+          value: ENV
+        - name: targetRevision
+          value: REVISION
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

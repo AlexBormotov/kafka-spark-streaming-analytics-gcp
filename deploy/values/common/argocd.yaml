@@ -1,0 +1,11 @@
+# Argo CD is installed by `make up` with Helm (it cannot install itself), then manages the rest.
+dex:
+  enabled: false
+notifications:
+  enabled: false
+applicationSet:
+  replicas: 0
+configs:
+  params:
+    # Reached only through `kubectl port-forward`; no ingress, no TLS termination in the cluster.
+    server.insecure: true

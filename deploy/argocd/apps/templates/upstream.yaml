@@ -1,0 +1,34 @@
+{{- range $name, $c := .Values.components }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $name }}
+  namespace: argocd
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ $c.namespace }}
+  sources:
+    - repoURL: {{ $c.repoURL }}
+      chart: {{ $c.chart }}
+      targetRevision: {{ $c.version | quote }}
+      helm:
+        releaseName: {{ $name }}
+        ignoreMissingValueFiles: true
+        valueFiles:
+          - $values/deploy/values/common/{{ $name }}.yaml
+          - $values/deploy/values/{{ $.Values.env }}/{{ $name }}.yaml
+    - repoURL: {{ $.Values.repoURL }}
+      targetRevision: {{ $.Values.targetRevision }}
+      ref: values
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # Strimzi CRDs exceed the client-side apply annotation size limit.
+      - ServerSideApply=true
+{{- end }}

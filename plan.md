@@ -213,6 +213,13 @@ unit lands as one reviewed change; the ceiling is set after layer 1 from measure
   moved to layer 2, operator install split P1).
 - Done when: spec completion step 3 passes and the cost is within AC-02.
 
+## Amendments
+
+**A1 (U1, 2026-11-06, pending owner approval).** Add `deploy/values/common/` to the U1 file set.
+Evidence: with only `local/` and `gke/`, every upstream chart's values would be written twice and
+drift. Argo CD loads `common/<component>.yaml` then `<env>/<component>.yaml`
+(`ignoreMissingValueFiles: true`), so an environment file holds only its differences.
+
 ## Order
 
 U0 -> U1 -> U2 -> {U3, U4} -> U5 -> U6 -> U7. U8 runs alongside from U0. Then U9, then U10.

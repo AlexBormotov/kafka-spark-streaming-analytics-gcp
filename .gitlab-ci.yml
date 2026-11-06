@@ -17,6 +17,12 @@ variables:
 
 lint:
   stage: lint
+  variables:
+    HELM_VERSION: v4.3.1
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq make curl > /dev/null
+    - curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
+      | tar -xz -C /usr/local/bin --strip-components=1 linux-amd64/helm
   script:
     - make lint
 

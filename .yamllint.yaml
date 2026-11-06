@@ -5,6 +5,7 @@ ignore: |
   .cache/
   ai-factory-kit/
   deploy/charts/*/templates/
+  deploy/argocd/apps/templates/
 
 rules:
   line-length:

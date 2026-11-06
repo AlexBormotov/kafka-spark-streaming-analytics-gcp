@@ -1,0 +1,20 @@
+plugins:
+  - grafana-clickhouse-datasource@4.23.4
+
+persistence:
+  enabled: false
+
+# Dashboards, datasources and alert rules come only from ConfigMaps labelled below.
+sidecar:
+  dashboards:
+    enabled: true
+    label: grafana_dashboard
+    searchNamespace: ALL
+  datasources:
+    enabled: true
+    label: grafana_datasource
+    searchNamespace: ALL
+  alerts:
+    enabled: true
+    label: grafana_alert
+    searchNamespace: ALL

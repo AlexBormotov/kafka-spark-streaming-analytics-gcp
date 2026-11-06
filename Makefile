@@ -8,7 +8,18 @@ GCP_PROJECT ?= qoe-spark-streaming
 GCP_REGION ?= us-central1
 
 TF_DIRS := $(wildcard infra/terraform/*)
-CHART_DIRS := $(wildcard deploy/charts/*)
+CHART_DIRS := deploy/argocd/apps $(wildcard deploy/charts/*)
+
+KIND_CLUSTER := qoe
+ARGOCD_CHART_VERSION := 10.11.7
+REVISION ?= $(shell git rev-parse --abbrev-ref HEAD)
+WAIT_TIMEOUT ?= 900s
+
+ifeq ($(ENV),local)
+KUBE_CONTEXT := kind-$(KIND_CLUSTER)
+endif
+KUBECTL = kubectl --context $(KUBE_CONTEXT)
+HELM = helm --kube-context $(KUBE_CONTEXT)
 
 .PHONY: help
 help: ## List targets
@@ -35,3 +46,38 @@ fmt: setup ## Apply formatters
 .PHONY: test
 test: setup ## Unit tests
 	uv run pytest
+
+.PHONY: check-env
+check-env:
+	@[ "$(ENV)" = local ] || { echo "ENV=$(ENV) is not implemented yet (GKE arrives in U8)"; exit 1; }
+
+.PHONY: cluster
+cluster: check-env
+	@kind get clusters | grep -qx $(KIND_CLUSTER) || kind create cluster --config deploy/kind/cluster.yaml
+
+.PHONY: check-pushed
+check-pushed:
+	@git fetch -q origin $(REVISION)
+	@[ -z "$$(git log origin/$(REVISION)..$(REVISION) --oneline)" ] || \
+		{ echo "Argo CD reads values from origin/$(REVISION): push local commits first"; exit 1; }
+
+.PHONY: up
+up: check-env check-pushed cluster ## Create the cluster, install Argo CD, sync every component (ENV=local)
+	$(HELM) upgrade --install argocd argo-cd --repo https://argoproj.github.io/argo-helm \
+		--version $(ARGOCD_CHART_VERSION) --namespace argocd --create-namespace \
+		-f deploy/values/common/argocd.yaml --wait --timeout 10m
+	sed -e 's/REVISION/$(REVISION)/g' -e 's/value: ENV/value: $(ENV)/' deploy/argocd/root.yaml | $(KUBECTL) apply -f -
+	$(KUBECTL) -n argocd wait application/root --for=jsonpath='{.status.sync.status}'=Synced --timeout=$(WAIT_TIMEOUT)
+	$(KUBECTL) -n argocd wait applications --all --for=jsonpath='{.status.sync.status}'=Synced --timeout=$(WAIT_TIMEOUT)
+	$(KUBECTL) -n argocd wait applications --all --for=jsonpath='{.status.health.status}'=Healthy --timeout=$(WAIT_TIMEOUT)
+	@$(MAKE) --no-print-directory status
+
+.PHONY: status
+status: check-env ## Show Argo CD applications and any pod that is not ready
+	@$(KUBECTL) -n argocd get applications
+	@echo "Pods not ready:"
+	@$(KUBECTL) get pods -A --no-headers | awk '$$4 != "Completed" && ($$4 != "Running" || split($$3,a,"/") && a[1] != a[2])' || true
+
+.PHONY: down
+down: check-env ## Delete the cluster
+	kind delete cluster --name $(KIND_CLUSTER)
