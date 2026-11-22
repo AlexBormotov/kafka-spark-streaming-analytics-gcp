@@ -49,6 +49,7 @@ Work units are defined in `plan.md`.
     41 487 schema v2), 879 `late_events`, 475 dead letters in `player-events-dlq` with
     `error:avro-decode` and `source` headers, p95 freshness 6.9 s; 1 executor (2 cores) sustains
     ~9.1 k events/s through the Python writer (docs/research)
+  - [x] CI green on 983acaa (`lint`, `test`, `test-integration`)
 - [ ] U6 Grafana dashboards and alerts
 - [ ] U7 `make verify-l1` and the local completion run
 - [ ] U8 Terraform and cost guards
