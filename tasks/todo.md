@@ -36,9 +36,25 @@ Work units are defined in `plan.md`.
     are rejected
   - [x] CI green on ef497fb and fa8f76f (`test-integration` with a ClickHouse service)
   - [x] security review: Service pinned to ClusterIP, user `qoe` limited to 10.0.0.0/8 (fa8f76f)
-- [ ] U5 Spark streaming job
+- [x] U5 Spark streaming job (plan amendment A3 approved 2026-11-10)
+  - [x] 5 unit tests (`test_batch.py`, local PySpark 4.0.5 + Java 17): v1, v2, late, duplicate,
+    malformed Avro, wrong magic byte, unknown schema id, deterministic partition routing on replay
+  - [x] `make test-integration` (`test_sink_replay.py`): 3 000 on-time + 30 late events replayed
+    with reordered rows and different input slices leave `player_events_raw`, `late_events` and
+    `qoe_10s` unchanged
+  - [x] mutation checks: removing `dropDuplicates` turns both the duplicate count and the partition
+    replay tests red; removing `insert_deduplication_token` in `sink.py` turns `test_sink_replay`
+    red (`raw` 4 492 vs 3 000, `qoe_10s` doubled)
+  - [x] `make dev` in kind: `SparkApplication` `RUNNING`, 263 487 events (`uniqExact == count`,
+    41 487 schema v2), 879 `late_events`, 475 dead letters in `player-events-dlq` with
+    `error:avro-decode` and `source` headers, p95 freshness 6.9 s; 1 executor (2 cores) sustains
+    ~9.1 k events/s through the Python writer (docs/research)
 - [ ] U6 Grafana dashboards and alerts
 - [ ] U7 `make verify-l1` and the local completion run
 - [ ] U8 Terraform and cost guards
 - [ ] U9 CI images and mirror
 - [ ] U10 Cloud run, cost report and decision records
+
+## Later
+
+- [ ] README: explain the write path (token per partition, A2/A3) and the per-batch watermark (A3)

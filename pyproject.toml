@@ -10,6 +10,7 @@ members = ["apps/generator", "apps/streaming"]
 [dependency-groups]
 dev = [
     "clickhouse-connect==1.12.0",
+    "pyspark==4.0.5",
     "pytest>=8.3",
     "ruff>=0.8",
     "yamllint>=1.35",
@@ -18,6 +19,7 @@ dev = [
 [tool.pytest.ini_options]
 # Integration tests need a live ClickHouse: `make test-integration` selects them with -m.
 addopts = "--import-mode=importlib -m 'not integration'"
+pythonpath = ["apps/streaming/tests"]
 testpaths = ["apps"]
 markers = ["integration: needs services started by `make test-integration`"]
 

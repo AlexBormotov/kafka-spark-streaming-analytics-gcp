@@ -235,6 +235,27 @@ drift. Argo CD loads `common/<component>.yaml` then `<env>/<component>.yaml`
    (`qoe-<batch_id>-<partition>`) every result is unchanged. Contract for U5: the writer sets a
    deterministic token per partition insert, and each partition is exactly one insert query.
 
+**A3 (U5, 2026-11-10, approved by owner 2026-11-10).** Three changes to U5; spec decision D2 is
+superseded for the write path.
+1. Files outside the U5 set: `Makefile` (`streaming` in `OWN_CHARTS` and `IMAGES`; `up` copies
+   `clickhouse-credentials` into namespace `streaming`), `deploy/argocd/apps/values.yaml`
+   (`own.streaming`), `.gitlab-ci.yml` (`openjdk-17-jre-headless` for PySpark tests),
+   `pyproject.toml` and `uv.lock` (`pyspark==4.0.5` in `dev`, `pythonpath` for shared test
+   fixtures).
+2. Writer: `foreachPartition` with the Python client `clickhouse-connect`, one insert per
+   partition with a deterministic `insert_deduplication_token`, instead of the JDBC writer.
+   Evidence: A2 showed that replay safety needs a token per partition; Spark's JDBC writer uses
+   one static connection configuration for all partitions and may split a partition into several
+   insert queries. Cost: rows pass through Python on the executors; measured in the local run.
+3. Late events: watermark per micro-batch, `max(event_ts in batch) - delay` (default 30 s).
+   Rows behind it go to `late_events`, the rest to `player_events_raw`. Evidence: Spark's own
+   watermark drops late rows inside stateful operators and exposes only a counter, and any
+   classification that depends on state outside the batch can differ on replay, which would make
+   the token drop the wrong rows. Limit: a batch with no fresh events cannot detect late ones.
+   Rejected: a watermark persisted per `batch_id` (extra state table and recovery logic); Spark's
+   `withWatermark` (late rows lost, only a count).
+The README explains both choices (owner request).
+
 ## Order
 
 U0 -> U1 -> U2 -> {U3, U4} -> U5 -> U6 -> U7. U8 runs alongside from U0. Then U9, then U10.

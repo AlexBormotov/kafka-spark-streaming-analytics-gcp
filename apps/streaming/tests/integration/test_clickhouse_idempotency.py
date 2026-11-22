@@ -4,19 +4,14 @@ Runs against the DDL in sql/clickhouse/ on a live server: CLICKHOUSE_URL, set by
 `make test-integration`.
 """
 
-import os
 import random
-import time
 import uuid
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 
-import clickhouse_connect
 import pytest
 
 pytestmark = pytest.mark.integration
 
-SQL_DIR = Path(__file__).resolve().parents[4] / "sql" / "clickhouse"
 TYPES = ["START", "PLAY", "HEARTBEAT", "HEARTBEAT", "HEARTBEAT", "REBUFFER", "ERROR", "STOP"]
 COLUMNS = ["event_id", "event_ts", "session_id", "user_id", "title_id", "cdn", "isp", "device",
            "country", "event_type", "bitrate_kbps", "rebuffer_ms", "startup_ms"]  # fmt: skip
@@ -40,36 +35,10 @@ SNAPSHOT_QUERIES = {
 }
 
 
-def connect(url: str, password: str, timeout_s: float = 60):
-    """Waits for a server that is still starting (CI service containers start in parallel)."""
-    deadline = time.monotonic() + timeout_s
-    while True:
-        try:
-            return clickhouse_connect.get_client(dsn=url, password=password)
-        except Exception:
-            if time.monotonic() > deadline:
-                raise
-            time.sleep(1)
-
-
-@pytest.fixture
-def ch():
-    url = os.environ.get("CLICKHOUSE_URL")
-    if not url:
-        pytest.fail("CLICKHOUSE_URL is not set: run `make test-integration`")
-    client = connect(url, os.environ.get("CLICKHOUSE_PASSWORD", ""))
-    client.command("DROP DATABASE IF EXISTS qoe SYNC")
-    for path in sorted(SQL_DIR.glob("*.sql")):
-        for statement in path.read_text().split(";\n"):
-            if statement.strip():
-                client.command(statement)
-    yield client
-    client.close()
-
-
 def batch(n: int, seed: int) -> list[list]:
     rng = random.Random(seed)
-    start = datetime(2026, 11, 6, 12, 0, tzinfo=UTC)
+    # Recent: the raw table has a one-day TTL.
+    start = datetime.now(UTC).replace(second=0, microsecond=0) - timedelta(hours=1)
     rows = []
     for _ in range(n):
         event_type = rng.choice(TYPES)

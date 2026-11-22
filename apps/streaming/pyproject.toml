@@ -3,7 +3,8 @@ name = "qoe-streaming-job"
 version = "0.1.0"
 description = "PySpark Structured Streaming job: Kafka to ClickHouse"
 requires-python = ">=3.12,<3.13"
-dependencies = []
+# pyspark comes from the Spark image at runtime and from the dev group in tests.
+dependencies = ["clickhouse-connect==1.12.0"]
 
 [build-system]
 requires = ["hatchling"]

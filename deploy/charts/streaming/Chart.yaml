@@ -1,0 +1,5 @@
+apiVersion: v2
+name: streaming
+description: PySpark Structured Streaming job, player-events to ClickHouse, run by the Spark Operator.
+type: application
+version: 0.1.0

@@ -39,3 +39,5 @@ own:
     namespace: kafka
   generator:
     namespace: generator
+  streaming:
+    namespace: streaming

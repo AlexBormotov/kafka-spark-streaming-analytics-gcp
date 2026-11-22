@@ -1,0 +1,38 @@
+# Defaults fit the local kind cluster.
+namespace: streaming
+image: qoe-streaming:dev
+imagePullPolicy: IfNotPresent
+sparkVersion: 4.0.5
+# Created by the Spark Operator chart in every job namespace.
+serviceAccount: spark-operator-spark
+
+kafka:
+  bootstrap: qoe-kafka-bootstrap.kafka.svc:9092
+  topic: player-events
+  dlqTopic: player-events-dlq
+registryUrl: http://schema-registry.kafka.svc:8080
+clickhouse:
+  url: http://clickhouse-qoe.clickhouse.svc:8123
+  user: qoe
+  # Copy of the Secret in the clickhouse namespace, created by `make up`.
+  credentialsSecret: clickhouse-credentials
+
+job:
+  trigger: 2 seconds
+  maxOffsetsPerTrigger: 200000
+  lateDelaySeconds: 30
+  # Partitions per micro-batch write = ClickHouse inserts per table per batch.
+  shufflePartitions: 4
+
+checkpoint:
+  # Local: a PVC. GKE moves this to a gs:// path with the cloud work units (U8, U10).
+  pvcSize: 1Gi
+  path: /checkpoint/qoe-streaming
+
+driver:
+  cores: 1
+  memory: 1g
+executor:
+  instances: 1
+  cores: 2
+  memory: 2g

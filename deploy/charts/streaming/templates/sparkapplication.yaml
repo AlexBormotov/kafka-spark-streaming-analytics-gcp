@@ -1,0 +1,71 @@
+{{- $ck := .Values.checkpoint }}
+{{- if $ck.pvcSize }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: qoe-streaming-checkpoint
+  namespace: {{ .Values.namespace }}
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: {{ $ck.pvcSize }}
+---
+{{- end }}
+apiVersion: sparkoperator.k8s.io/v1beta2
+kind: SparkApplication
+metadata:
+  name: qoe-streaming
+  namespace: {{ .Values.namespace }}
+spec:
+  type: Python
+  pythonVersion: "3"
+  mode: cluster
+  image: {{ .Values.image }}
+  imagePullPolicy: {{ .Values.imagePullPolicy }}
+  mainApplicationFile: local:///opt/qoe/job.py
+  sparkVersion: {{ .Values.sparkVersion | quote }}
+  sparkConf:
+    spark.sql.session.timeZone: UTC
+  # A streaming job never finishes; restart it whenever it stops.
+  restartPolicy:
+    type: Always
+    onFailureRetryInterval: 10
+    onSubmissionFailureRetryInterval: 20
+  {{- if $ck.pvcSize }}
+  volumes:
+    - name: checkpoint
+      persistentVolumeClaim:
+        claimName: qoe-streaming-checkpoint
+  {{- end }}
+  driver:
+    cores: {{ .Values.driver.cores }}
+    memory: {{ .Values.driver.memory }}
+    serviceAccount: {{ .Values.serviceAccount }}
+    {{- if $ck.pvcSize }}
+    volumeMounts:
+      - name: checkpoint
+        mountPath: /checkpoint
+    {{- end }}
+    env:
+      - {name: QOE_KAFKA_BOOTSTRAP, value: {{ .Values.kafka.bootstrap | quote }}}
+      - {name: QOE_TOPIC, value: {{ .Values.kafka.topic | quote }}}
+      - {name: QOE_DLQ_TOPIC, value: {{ .Values.kafka.dlqTopic | quote }}}
+      - {name: QOE_REGISTRY_URL, value: {{ .Values.registryUrl | quote }}}
+      - {name: QOE_CLICKHOUSE_URL, value: {{ .Values.clickhouse.url | quote }}}
+      - {name: QOE_CLICKHOUSE_USER, value: {{ .Values.clickhouse.user | quote }}}
+      - name: QOE_CLICKHOUSE_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: {{ .Values.clickhouse.credentialsSecret }}
+            key: password
+      - {name: QOE_CHECKPOINT, value: {{ $ck.path | quote }}}
+      - {name: QOE_TRIGGER, value: {{ .Values.job.trigger | quote }}}
+      - {name: QOE_MAX_OFFSETS_PER_TRIGGER, value: {{ .Values.job.maxOffsetsPerTrigger | quote }}}
+      - {name: QOE_LATE_DELAY_S, value: {{ .Values.job.lateDelaySeconds | quote }}}
+      - {name: QOE_SHUFFLE_PARTITIONS, value: {{ .Values.job.shufflePartitions | quote }}}
+  executor:
+    instances: {{ .Values.executor.instances }}
+    cores: {{ .Values.executor.cores }}
+    memory: {{ .Values.executor.memory }}
+    serviceAccount: {{ .Values.serviceAccount }}

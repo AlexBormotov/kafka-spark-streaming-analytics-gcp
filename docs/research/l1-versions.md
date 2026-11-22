@@ -36,6 +36,7 @@ work unit that depends on them is considered done.
 | ClickHouse 26.8 single replica | runs without Keeper; non-replicated engines | `make dev`, 2026-11-06 |
 | ClickHouse insert deduplication | identical blocks are dropped even without a token; a replay with reordered rows is dropped only with `insert_deduplication_token`. `deduplicate_blocks_in_dependent_materialized_views` defaults to 1 in 26.8 | `make test-integration`, 2026-11-06 |
 | Generator into Kafka, one pod, kind | 41 000-66 000 events/s, 0 delivery failures | 60 s at target 200 000/s, 1 broker; 4.64 M records in topic, partitions 375 k-403 k |
+| Spark 4.0.5 (`kafka-clients` 3.9.1) + Python writer (`clickhouse-connect` 1.12.0) in kind | ~9 100 events/s on 1 executor (2 cores, 2 GiB), p95 freshness 6.9 s at 2 000/s; `apache/spark:4.0.5-python3` ships Python 3.10.12 so the image installs Python 3.12 via `uv` | `make dev`, 2026-11-22; 263 487 events (v1 + v2), 879 late, 475 DLQ (`error:avro-decode`) |
 
 Consequence: nominal 20 000 events/s needs one generator pod; the demo uses 2 pods x 10 000/s so
 that scaling is visible, and up to 50 000/s fits in 2-3 pods.

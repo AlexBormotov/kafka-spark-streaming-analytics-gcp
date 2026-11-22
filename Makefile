@@ -18,11 +18,12 @@ WAIT_TIMEOUT ?= 900s
 GITOPS ?= 0
 GITOPS_BOOL := $(if $(filter 1 true,$(GITOPS)),true,false)
 # Own charts in install order, with the Helm release namespace of each.
-OWN_CHARTS := platform generator
+OWN_CHARTS := platform generator streaming
 NS_platform := kafka
 NS_generator := generator
+NS_streaming := streaming
 # Images built from this repository; local runs load them into kind under the :dev tag.
-IMAGES := generator
+IMAGES := generator streaming
 
 ifeq ($(ENV),local)
 KUBE_CONTEXT := kind-$(KIND_CLUSTER)
@@ -93,6 +94,11 @@ up: check-env check-pushed cluster ## Create the cluster, install Argo CD, sync 
 	@$(KUBECTL) -n clickhouse get secret clickhouse-credentials >/dev/null 2>&1 || \
 		$(KUBECTL) -n clickhouse create secret generic clickhouse-credentials --from-literal=user=qoe \
 		--from-literal=password="$$(openssl rand -hex 16)"
+	@# The streaming job reads the same credentials in its own namespace.
+	@$(KUBECTL) create namespace streaming --dry-run=client -o yaml | $(KUBECTL) apply -f - >/dev/null
+	@$(KUBECTL) -n streaming create secret generic clickhouse-credentials --from-literal=user=qoe \
+		--from-literal=password="$$($(KUBECTL) -n clickhouse get secret clickhouse-credentials \
+		-o jsonpath='{.data.password}' | base64 -d)" --dry-run=client -o yaml | $(KUBECTL) apply -f - >/dev/null
 	sed -e 's/REVISION/$(REVISION)/g' -e 's/value: ENV/value: $(ENV)/' -e 's/"GITOPS"/"$(GITOPS_BOOL)"/' \
 		deploy/argocd/root.yaml | $(KUBECTL) apply -f -
 	$(KUBECTL) -n argocd wait application/root --for=jsonpath='{.status.sync.status}'=Synced --timeout=$(WAIT_TIMEOUT)
