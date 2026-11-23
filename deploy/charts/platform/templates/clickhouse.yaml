@@ -36,8 +36,11 @@ spec:
       # Not 2: it allows temporary tables and so table functions such as url() and s3(), an SSRF
       # path from Grafana's credentials. The plugin sets max_execution_time on every query, so
       # that one setting stays changeable, capped.
+      # min 1: 0 would mean no limit.
       readonly/readonly: 1
+      readonly/max_execution_time: 60
       readonly/constraints/max_execution_time/changeable_in_readonly: ""
+      readonly/constraints/max_execution_time/min: 1
       readonly/constraints/max_execution_time/max: 60
       # Replay safety: a repeated insert_deduplication_token is dropped in the materialized
       # views too. 26.8 defaults to 1; pinned so a server upgrade cannot change it.

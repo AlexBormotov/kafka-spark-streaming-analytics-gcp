@@ -286,7 +286,8 @@ Evidence against A4, 2026-11-23; owner approved both fixes the same day: user `g
 - Superseded the same day after a security review: `readonly = 2` also allows temporary tables,
   so `url()` worked as `grafana` (it read the schema registry from inside the cluster, an SSRF
   path). Final: `readonly = 1` plus a profile constraint that keeps only `max_execution_time`
-  changeable (`changeable_in_readonly`, max 60). Verified as `grafana`: `url()`, INSERT and other
+  changeable (`changeable_in_readonly`, min 1 since 0 means no limit, max 60, default 60).
+  Verified as `grafana`: `url()`, INSERT and other
   settings are rejected with code 164; all panels and the alert query run.
 - Changing CHI users makes the operator recreate the ClickHouse pod after the schema hook has run.
   Locally the data lives in the pod (`storage.size: ""`), so schema and data were lost until
