@@ -264,7 +264,8 @@ yet, and a read-only path for Grafana.
    offsets to a consumer group, so the Strimzi Kafka Exporter cannot see its lag, and Prometheus
    would add memory the local cluster does not have. Rejected: Prometheus + Kafka Exporter.
    Per-partition lag also shows hot-title skew (AC-13).
-2. Grafana reads ClickHouse as user `grafana` with `readonly = 2` (see the evidence below).
+2. Grafana reads ClickHouse as user `grafana` with `readonly = 1`; only `max_execution_time` stays
+   changeable, capped at 60 s (see the evidence below).
    `make up` creates its password once and stores it in namespaces `clickhouse` and `monitoring`.
 3. Alert: rebuffer ratio per CDN = `rebuffers / (heartbeats + rebuffers)` (the generator's
    definition) over the last 30 s of `qoe_10s`, threshold 0.1 (base 0.02, injected 0.3), at least
@@ -282,6 +283,11 @@ Evidence against A4, 2026-11-23; owner approved both fixes the same day: user `g
 - `readonly = 1` breaks every Grafana query: the ClickHouse plugin sets `max_execution_time` on
   each query, and ClickHouse answers `code: 164, Cannot modify 'max_execution_time' setting in
   readonly mode`. `readonly = 2` allows changing settings and still forbids writes and DDL.
+- Superseded the same day after a security review: `readonly = 2` also allows temporary tables,
+  so `url()` worked as `grafana` (it read the schema registry from inside the cluster, an SSRF
+  path). Final: `readonly = 1` plus a profile constraint that keeps only `max_execution_time`
+  changeable (`changeable_in_readonly`, max 60). Verified as `grafana`: `url()`, INSERT and other
+  settings are rejected with code 164; all panels and the alert query run.
 - Changing CHI users makes the operator recreate the ClickHouse pod after the schema hook has run.
   Locally the data lives in the pod (`storage.size: ""`), so schema and data were lost until
   `helm upgrade platform` re-ran the hook.

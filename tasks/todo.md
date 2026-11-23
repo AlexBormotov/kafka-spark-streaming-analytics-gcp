@@ -56,8 +56,9 @@ Work units are defined in `plan.md`.
     data, under 50 ticks or older than 30 s
   - [x] mutation checks: dropping the 50-tick minimum, the 30 s window, or breaking the ratio or a
     table name each turn one test red
-  - [x] kind: datasource healthy as read-only `grafana` (`readonly = 2`; INSERT and DROP rejected
-    with code 164); all 12 panels return data through `/api/ds/query`
+  - [x] kind: datasource healthy as read-only `grafana` (`readonly = 1`, only `max_execution_time`
+    <= 60 changeable; INSERT, DROP and `url()` rejected with code 164); all 12 panels return data
+    through `/api/ds/query`
   - [x] kind, 3 000 events/s: 2 min clean, all CDNs `Normal` (ratio ~0.02); `inject cdn=cdn-b`
     Firing for `cdn-b` only 15 s after `helm upgrade`; back to `Normal` ~45 s after removal
   - [x] `stream_progress`: lag per partition and dead letters (3 970 at malformed share 0.005 of
