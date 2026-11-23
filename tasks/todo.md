@@ -63,6 +63,8 @@ Work units are defined in `plan.md`.
     Firing for `cdn-b` only 15 s after `helm upgrade`; back to `Normal` ~45 s after removal
   - [x] `stream_progress`: lag per partition and dead letters (3 970 at malformed share 0.005 of
     790 250 events, `uniqExact == count`), 7 980 late events
+  - [x] CI green on 84be768 (`lint`, `test`, `test-integration`); security review fixes:
+    no `readonly = 2` (table functions), `max_execution_time` bounded to 1-60 s
 - [ ] U7 `make verify-l1` and the local completion run
 - [ ] U8 Terraform and cost guards
 - [ ] U9 CI images and mirror
