@@ -50,7 +50,18 @@ Work units are defined in `plan.md`.
     `error:avro-decode` and `source` headers, p95 freshness 6.9 s; 1 executor (2 cores) sustains
     ~9.1 k events/s through the Python writer (docs/research)
   - [x] CI green on 983acaa (`lint`, `test`, `test-integration`)
-- [ ] U6 Grafana dashboards and alerts (plan amendment A4 approved 2026-11-23)
+- [x] U6 Grafana dashboards and alerts (plan amendment A4 approved 2026-11-23)
+  - [x] `make test-integration` (`test_dashboard_queries.py`): all 12 dashboard queries return rows
+    on the real schema; the alert query returns the degraded CDN above 0.1, nothing for clean
+    data, under 50 ticks or older than 30 s
+  - [x] mutation checks: dropping the 50-tick minimum, the 30 s window, or breaking the ratio or a
+    table name each turn one test red
+  - [x] kind: datasource healthy as read-only `grafana` (`readonly = 2`; INSERT and DROP rejected
+    with code 164); all 12 panels return data through `/api/ds/query`
+  - [x] kind, 3 000 events/s: 2 min clean, all CDNs `Normal` (ratio ~0.02); `inject cdn=cdn-b`
+    Firing for `cdn-b` only 15 s after `helm upgrade`; back to `Normal` ~45 s after removal
+  - [x] `stream_progress`: lag per partition and dead letters (3 970 at malformed share 0.005 of
+    790 250 events, `uniqExact == count`), 7 980 late events
 - [ ] U7 `make verify-l1` and the local completion run
 - [ ] U8 Terraform and cost guards
 - [ ] U9 CI images and mirror

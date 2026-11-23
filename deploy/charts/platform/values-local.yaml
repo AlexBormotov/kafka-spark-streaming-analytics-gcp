@@ -1,0 +1,5 @@
+clickhouse:
+  # The operator recreates the pod when the CHI changes (users, profiles), after the schema hook
+  # has run. A volume keeps schema and data across that (plan A4).
+  storage:
+    size: 2Gi

@@ -33,7 +33,9 @@ spec:
       grafana/networks/ip: {{ $c.allowedNetwork | quote }}
       grafana/profile: readonly
     profiles:
-      readonly/readonly: 1
+      # 2, not 1: the Grafana plugin sets max_execution_time on every query, which readonly = 1
+      # rejects. 2 still forbids writes and DDL.
+      readonly/readonly: 2
       # Replay safety: a repeated insert_deduplication_token is dropped in the materialized
       # views too. 26.8 defaults to 1; pinned so a server upgrade cannot change it.
       default/deduplicate_blocks_in_dependent_materialized_views: 1
