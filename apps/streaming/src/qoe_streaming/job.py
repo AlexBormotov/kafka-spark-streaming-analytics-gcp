@@ -9,6 +9,7 @@ import os
 from pyspark.sql import DataFrame, SparkSession
 
 from qoe_streaming.batch import route
+from qoe_streaming.progress import ProgressWriter
 from qoe_streaming.registry import SchemaCache
 from qoe_streaming.sink import ClickHouse, write
 
@@ -41,6 +42,8 @@ def main() -> None:
         .config("spark.sql.session.timeZone", "UTC")
         .getOrCreate()
     )
+    progress = ProgressWriter(ch)
+    spark.streams.addListener(progress)
 
     def process(raw: DataFrame, batch_id: int) -> None:
         raw = raw.persist()
@@ -51,9 +54,12 @@ def main() -> None:
             write(events, ch, "player_events_raw", prefix)
             write(routed.late, ch, "late_events", prefix)
             # At-least-once: a replayed batch can repeat dead letters.
-            routed.dead.write.format("kafka").option("kafka.bootstrap.servers", bootstrap).option(
+            dead = routed.dead.persist()
+            progress.dead_letters[batch_id] = dead.count()
+            dead.write.format("kafka").option("kafka.bootstrap.servers", bootstrap).option(
                 "topic", dlq_topic
             ).save()
+            dead.unpersist()
             events.unpersist()
         finally:
             raw.unpersist()

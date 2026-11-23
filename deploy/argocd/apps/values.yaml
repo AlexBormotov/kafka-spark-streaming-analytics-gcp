@@ -41,3 +41,5 @@ own:
     namespace: generator
   streaming:
     namespace: streaming
+  dashboards:
+    namespace: monitoring

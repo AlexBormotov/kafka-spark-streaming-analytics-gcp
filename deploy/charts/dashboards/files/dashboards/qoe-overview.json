@@ -1,0 +1,267 @@
+{
+  "uid": "qoe-overview",
+  "title": "QoE overview",
+  "tags": ["qoe"],
+  "timezone": "utc",
+  "refresh": "10s",
+  "time": {"from": "now-15m", "to": "now"},
+  "schemaVersion": 39,
+  "editable": false,
+  "templating": {
+    "list": [
+      {
+        "name": "dim",
+        "label": "Group by",
+        "type": "custom",
+        "query": "cdn,isp,device",
+        "current": {"text": "cdn", "value": "cdn"},
+        "options": []
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Events per second by CDN",
+      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+      "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+          "editorType": "sql",
+          "queryType": "timeseries",
+          "format": 0,
+          "rawSql": "SELECT window_start AS time, cdn, sum(events) / 10 AS events_per_s FROM qoe.qoe_10s WHERE $__timeFilter(window_start) GROUP BY time, cdn ORDER BY time"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Rebuffer ratio by ${dim}",
+      "description": "REBUFFER / (HEARTBEAT + REBUFFER) playback ticks. The alert fires above 0.1 per CDN.",
+      "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+      "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {"thresholdsStyle": {"mode": "line"}},
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 0.1}]}
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+          "editorType": "sql",
+          "queryType": "timeseries",
+          "format": 0,
+          "rawSql": "SELECT window_start AS time, ${dim} AS series, sum(rebuffers) / nullIf(sum(heartbeats) + sum(rebuffers), 0) AS rebuffer_ratio FROM qoe.qoe_10s WHERE $__timeFilter(window_start) GROUP BY time, series ORDER BY time"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Average bitrate by ${dim}",
+      "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+      "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+      "fieldConfig": {"defaults": {"unit": "Kbits"}, "overrides": []},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+          "editorType": "sql",
+          "queryType": "timeseries",
+          "format": 0,
+          "rawSql": "SELECT window_start AS time, ${dim} AS series, sum(bitrate_sum) / nullIf(sum(bitrate_n), 0) AS bitrate_kbps FROM qoe.qoe_10s WHERE $__timeFilter(window_start) GROUP BY time, series ORDER BY time"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Playback errors per second by CDN",
+      "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+      "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+          "editorType": "sql",
+          "queryType": "timeseries",
+          "format": 0,
+          "rawSql": "SELECT window_start AS time, cdn, sum(errors) / 10 AS errors_per_s FROM qoe.qoe_10s WHERE $__timeFilter(window_start) GROUP BY time, cdn ORDER BY time"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Startup time p95 by CDN",
+      "gridPos": {"x": 0, "y": 16, "w": 8, "h": 8},
+      "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+      "fieldConfig": {"defaults": {"unit": "ms"}, "overrides": []},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+          "editorType": "sql",
+          "queryType": "timeseries",
+          "format": 0,
+          "rawSql": "SELECT window_start AS time, cdn, quantilesMerge(0.5, 0.95)(startup_ms_q)[2] AS startup_ms_p95 FROM qoe.qoe_10s WHERE $__timeFilter(window_start) GROUP BY time, cdn ORDER BY time"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Freshness (ingest_ts - event_ts)",
+      "description": "AC-11: p95 at most 10 s.",
+      "gridPos": {"x": 8, "y": 16, "w": 12, "h": 8},
+      "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {"thresholdsStyle": {"mode": "line"}},
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 10}]}
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+          "editorType": "sql",
+          "queryType": "timeseries",
+          "format": 0,
+          "rawSql": "SELECT window_start AS time, quantilesMerge(0.5, 0.95)(freshness_ms_q)[1] / 1000 AS p50, quantilesMerge(0.5, 0.95)(freshness_ms_q)[2] / 1000 AS p95 FROM qoe.qoe_10s WHERE $__timeFilter(window_start) GROUP BY time ORDER BY time"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Freshness p95, last 2 min",
+      "gridPos": {"x": 20, "y": 16, "w": 4, "h": 8},
+      "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 1,
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 10}]}
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+          "editorType": "sql",
+          "queryType": "table",
+          "format": 1,
+          "rawSql": "SELECT quantile(0.95)(dateDiff('millisecond', event_ts, ingest_ts)) / 1000 AS p95 FROM qoe.player_events_raw WHERE ingest_ts >= now() - INTERVAL 2 MINUTE"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Kafka lag by partition (offsets behind latest)",
+      "description": "Written by the Spark job after each micro-batch. One hot partition means key skew.",
+      "gridPos": {"x": 0, "y": 24, "w": 12, "h": 8},
+      "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+          "editorType": "sql",
+          "queryType": "timeseries",
+          "format": 0,
+          "rawSql": "SELECT ts AS time, concat('p', toString(p)) AS partition, lag[p] AS offsets_behind FROM qoe.stream_progress ARRAY JOIN mapKeys(lag) AS p WHERE $__timeFilter(ts) ORDER BY time"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Spark rows per second",
+      "gridPos": {"x": 12, "y": 24, "w": 12, "h": 8},
+      "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+          "editorType": "sql",
+          "queryType": "timeseries",
+          "format": 0,
+          "rawSql": "SELECT ts AS time, input_rows_per_s AS input, processed_rows_per_s AS processed FROM qoe.stream_progress WHERE $__timeFilter(ts) ORDER BY time"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Late events per second",
+      "description": "Behind the per-batch watermark; kept in qoe.late_events, not in the aggregates.",
+      "gridPos": {"x": 0, "y": 32, "w": 8, "h": 8},
+      "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+          "editorType": "sql",
+          "queryType": "timeseries",
+          "format": 0,
+          "rawSql": "SELECT toStartOfInterval(ingest_ts, INTERVAL 10 SECOND) AS time, count() / 10 AS late_per_s FROM qoe.late_events WHERE $__timeFilter(ingest_ts) GROUP BY time ORDER BY time"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Dead letters per 10 s",
+      "description": "Records sent to player-events-dlq.",
+      "gridPos": {"x": 8, "y": 32, "w": 8, "h": 8},
+      "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+          "editorType": "sql",
+          "queryType": "timeseries",
+          "format": 0,
+          "rawSql": "SELECT toStartOfInterval(ts, INTERVAL 10 SECOND) AS time, sum(dead_letters) AS dead_letters FROM qoe.stream_progress WHERE $__timeFilter(ts) GROUP BY time ORDER BY time"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "table",
+      "title": "Top titles by events",
+      "description": "A hot title stands out here.",
+      "gridPos": {"x": 16, "y": 32, "w": 8, "h": 8},
+      "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+          "editorType": "sql",
+          "queryType": "table",
+          "format": 1,
+          "rawSql": "SELECT title_id, sum(events) AS events, round(sum(rebuffers) / nullIf(sum(heartbeats) + sum(rebuffers), 0), 3) AS rebuffer_ratio FROM qoe.qoe_1m WHERE $__timeFilter(window_start) GROUP BY title_id ORDER BY events DESC LIMIT 20"
+        }
+      ]
+    }
+  ]
+}

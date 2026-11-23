@@ -256,6 +256,27 @@ superseded for the write path.
    `withWatermark` (late rows lost, only a count).
 The README explains both choices (owner request).
 
+**A4 (U6, 2026-11-23, approved by owner 2026-11-23).** U6 needs data that is not in ClickHouse
+yet, and a read-only path for Grafana.
+1. Kafka lag and dead-letter counts: a `StreamingQueryListener` on the Spark driver writes one row
+   per micro-batch to `qoe.stream_progress` (time, `batch_id`, input rows, rows/s, batch duration,
+   lag per partition = `latestOffset - endOffset`, dead letters). Evidence: Spark does not commit
+   offsets to a consumer group, so the Strimzi Kafka Exporter cannot see its lag, and Prometheus
+   would add memory the local cluster does not have. Rejected: Prometheus + Kafka Exporter.
+   Per-partition lag also shows hot-title skew (AC-13).
+2. Grafana reads ClickHouse as user `grafana` with `readonly = 1`. `make up` creates its password
+   once and stores it in namespaces `clickhouse` and `monitoring`.
+3. Alert: rebuffer ratio per CDN = `rebuffers / (heartbeats + rebuffers)` (the generator's
+   definition) over the last 30 s of `qoe_10s`, threshold 0.1 (base 0.02, injected 0.3), at least
+   50 playback ticks per CDN, evaluated every 10 s, `for: 0s`, no data = OK.
+4. Files outside the U6 set: `sql/clickhouse/050_stream_progress.sql`, `apps/streaming/**`,
+   `deploy/charts/platform/templates/clickhouse.yaml` and `values.yaml` (user `grafana`),
+   `Makefile` (secret, `dashboards` in `OWN_CHARTS`), `deploy/argocd/apps/values.yaml`
+   (`own.dashboards`).
+5. Red check before U7: an integration test runs every dashboard and alert query against
+   ClickHouse; the alert query returns the degraded CDN above the threshold and nothing on clean
+   data. In kind, `--inject cdn=cdn-b` makes the Grafana API report the alert Firing for `cdn-b`.
+
 ## Order
 
 U0 -> U1 -> U2 -> {U3, U4} -> U5 -> U6 -> U7. U8 runs alongside from U0. Then U9, then U10.

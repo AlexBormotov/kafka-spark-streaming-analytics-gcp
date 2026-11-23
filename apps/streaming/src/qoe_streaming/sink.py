@@ -21,6 +21,13 @@ class ClickHouse:
     password: str
     database: str = "qoe"
 
+    def connect(self):
+        import clickhouse_connect  # executors import it; keeps the driver import cheap
+
+        return clickhouse_connect.get_client(
+            dsn=self.url, username=self.user, password=self.password, database=self.database
+        )
+
 
 def _to_datetime(ms: int | None) -> datetime | None:
     return None if ms is None else datetime.fromtimestamp(ms / 1000, UTC)
@@ -39,12 +46,8 @@ def write(df: DataFrame, ch: ClickHouse, table: str, token_prefix: str) -> None:
             data.append(values)
         if not data:
             return
-        import clickhouse_connect  # executors import it; keeps the driver import cheap
-
         token = f"{token_prefix}-{TaskContext.get().partitionId()}"
-        client = clickhouse_connect.get_client(
-            dsn=ch.url, username=ch.user, password=ch.password, database=ch.database
-        )
+        client = ch.connect()
         try:
             client.insert(
                 table,

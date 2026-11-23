@@ -1,0 +1,12 @@
+# Grafana's namespace: its sidecars read labelled ConfigMaps only there.
+namespace: monitoring
+
+clickhouse:
+  host: clickhouse-qoe.clickhouse.svc
+  port: 9000
+  # Read-only user; Grafana gets its password as CLICKHOUSE_PASSWORD (deploy/values/common/grafana.yaml).
+  user: grafana
+
+alert:
+  # Rebuffer ratio per CDN above which the alert fires. Generator: base 0.02, injected 0.3.
+  rebufferRatioThreshold: 0.1

@@ -50,7 +50,7 @@ Work units are defined in `plan.md`.
     `error:avro-decode` and `source` headers, p95 freshness 6.9 s; 1 executor (2 cores) sustains
     ~9.1 k events/s through the Python writer (docs/research)
   - [x] CI green on 983acaa (`lint`, `test`, `test-integration`)
-- [ ] U6 Grafana dashboards and alerts
+- [ ] U6 Grafana dashboards and alerts (plan amendment A4 approved 2026-11-23)
 - [ ] U7 `make verify-l1` and the local completion run
 - [ ] U8 Terraform and cost guards
 - [ ] U9 CI images and mirror
@@ -59,3 +59,7 @@ Work units are defined in `plan.md`.
 ## Later
 
 - [ ] README: explain the write path (token per partition, A2/A3) and the per-batch watermark (A3)
+- [ ] U7: local demo rate must fit one executor (~9.1 k events/s measured in U5): pick <= 8 k/s
+  or add an executor, and record the chosen rate
+- [ ] U8/U10: `deploy/charts/streaming/values-gke.yaml` sized for 20 k events/s nominal
+  (>= 3 executors at ~9 k/s each), re-measured on the first cloud run

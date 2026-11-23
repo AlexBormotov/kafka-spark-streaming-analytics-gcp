@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clickhouse-datasource
+  namespace: {{ .Values.namespace }}
+  labels:
+    grafana_datasource: "1"
+data:
+  clickhouse.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: ClickHouse
+        uid: clickhouse
+        type: grafana-clickhouse-datasource
+        isDefault: true
+        editable: false
+        jsonData:
+          host: {{ .Values.clickhouse.host }}
+          port: {{ .Values.clickhouse.port }}
+          protocol: native
+          secure: false
+          username: {{ .Values.clickhouse.user }}
+          defaultDatabase: qoe
+        secureJsonData:
+          # Expanded by Grafana from its environment; the value never enters a ConfigMap.
+          password: $CLICKHOUSE_PASSWORD

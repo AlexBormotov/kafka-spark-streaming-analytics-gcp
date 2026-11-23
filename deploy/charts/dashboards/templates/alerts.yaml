@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: qoe-alerts
+  namespace: {{ .Values.namespace }}
+  labels:
+    grafana_alert: "1"
+data:
+  qoe-alerts.yaml: |
+    apiVersion: 1
+    groups:
+      - orgId: 1
+        name: qoe
+        folder: QoE
+        # AC-12: Firing within 60 s of an injection. Data reaches ClickHouse in ~5 s.
+        interval: 10s
+        rules:
+          - uid: rebuffer-ratio-by-cdn
+            title: Rebuffer ratio by CDN
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange: {from: 60, to: 0}
+                datasourceUid: clickhouse
+                model:
+                  refId: A
+                  editorType: sql
+                  queryType: table
+                  format: 1
+                  rawSql: |
+                    {{- .Files.Get "files/alerts/rebuffer_ratio_by_cdn.sql" | nindent 20 }}
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params: [{{ .Values.alert.rebufferRatioThreshold }}]
+            # Idle pipeline: no rows, no alert. A failing query shows as Error, not Firing.
+            noDataState: OK
+            execErrState: Error
+            for: 0s
+            labels:
+              severity: page
+            annotations:
+              summary: "Rebuffer ratio on {{`{{ $labels.cdn }}`}} is {{`{{ $values.A }}`}}"

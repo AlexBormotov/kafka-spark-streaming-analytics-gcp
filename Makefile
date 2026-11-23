@@ -18,10 +18,11 @@ WAIT_TIMEOUT ?= 900s
 GITOPS ?= 0
 GITOPS_BOOL := $(if $(filter 1 true,$(GITOPS)),true,false)
 # Own charts in install order, with the Helm release namespace of each.
-OWN_CHARTS := platform generator streaming
+OWN_CHARTS := platform generator streaming dashboards
 NS_platform := kafka
 NS_generator := generator
 NS_streaming := streaming
+NS_dashboards := monitoring
 # Images built from this repository; local runs load them into kind under the :dev tag.
 IMAGES := generator streaming
 
@@ -98,6 +99,13 @@ up: check-env check-pushed cluster ## Create the cluster, install Argo CD, sync 
 	@$(KUBECTL) create namespace streaming --dry-run=client -o yaml | $(KUBECTL) apply -f - >/dev/null
 	@$(KUBECTL) -n streaming create secret generic clickhouse-credentials --from-literal=user=qoe \
 		--from-literal=password="$$($(KUBECTL) -n clickhouse get secret clickhouse-credentials \
+		-o jsonpath='{.data.password}' | base64 -d)" --dry-run=client -o yaml | $(KUBECTL) apply -f - >/dev/null
+	@# Read-only ClickHouse user for Grafana: the server reads it in `clickhouse`, Grafana in `monitoring`.
+	@$(KUBECTL) -n clickhouse get secret clickhouse-grafana >/dev/null 2>&1 || \
+		$(KUBECTL) -n clickhouse create secret generic clickhouse-grafana --from-literal=user=grafana \
+		--from-literal=password="$$(openssl rand -hex 16)"
+	@$(KUBECTL) -n monitoring create secret generic clickhouse-grafana --from-literal=user=grafana \
+		--from-literal=password="$$($(KUBECTL) -n clickhouse get secret clickhouse-grafana \
 		-o jsonpath='{.data.password}' | base64 -d)" --dry-run=client -o yaml | $(KUBECTL) apply -f - >/dev/null
 	sed -e 's/REVISION/$(REVISION)/g' -e 's/value: ENV/value: $(ENV)/' -e 's/"GITOPS"/"$(GITOPS_BOOL)"/' \
 		deploy/argocd/root.yaml | $(KUBECTL) apply -f -
