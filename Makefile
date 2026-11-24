@@ -17,6 +17,8 @@ WAIT_TIMEOUT ?= 900s
 # GITOPS=1: Argo CD deploys this repository's charts too. Otherwise `make dev` deploys them.
 GITOPS ?= 0
 GITOPS_BOOL := $(if $(filter 1 true,$(GITOPS)),true,false)
+comma := ,
+INJECT ?=
 # Own charts in install order, with the Helm release namespace of each.
 OWN_CHARTS := platform generator streaming dashboards
 NS_platform := kafka
@@ -28,6 +30,9 @@ IMAGES := generator streaming
 
 ifeq ($(ENV),local)
 KUBE_CONTEXT := kind-$(KIND_CLUSTER)
+# Load = DEMO_REPLICAS x DEMO_RATE events/s. Local: one Spark executor sustains ~9 k/s (U5).
+DEMO_REPLICAS ?= 2
+DEMO_RATE ?= 3000
 endif
 KUBECTL = kubectl --context $(KUBE_CONTEXT)
 HELM = helm --kube-context $(KUBE_CONTEXT)
@@ -123,9 +128,22 @@ images: check-env ## Build this repository's images and load them into the kind 
 
 .PHONY: dev
 dev: check-env images ## Build images, install or upgrade this repository's charts with Helm (no push needed)
-	$(foreach c,$(OWN_CHARTS),$(HELM) upgrade --install $(c) deploy/charts/$(c) \
+	@# --reset-values: without it Helm keeps `--set` overrides from an earlier run.
+	$(foreach c,$(OWN_CHARTS),$(HELM) upgrade --install $(c) deploy/charts/$(c) --reset-values \
 		--namespace $(NS_$(c)) --create-namespace --wait --timeout 15m \
 		$(if $(wildcard deploy/charts/$(c)/values-$(ENV).yaml),-f deploy/charts/$(c)/values-$(ENV).yaml) &&) true
+
+.PHONY: demo
+demo: check-env ## Start the load: DEMO_REPLICAS x DEMO_RATE events/s; INJECT=cdn=cdn-b degrades one CDN
+	$(HELM) upgrade generator deploy/charts/generator -n generator --reset-values \
+		--set replicas=$(DEMO_REPLICAS) --set ratePerPod=$(DEMO_RATE) \
+		--set inject="$(subst $(comma),\$(comma),$(INJECT))" --wait
+	@echo "load: $(DEMO_REPLICAS) x $(DEMO_RATE) events/s; dashboard: make grafana, then /d/qoe-overview"
+
+.PHONY: verify-l1
+verify-l1: check-env setup ## Run the spec's eight layer 1 checks against the running cluster (~8 min)
+	uv run python scripts/verify_l1.py --context $(KUBE_CONTEXT) \
+		--replicas $(DEMO_REPLICAS) --rate-per-pod $(DEMO_RATE) $(if $(ONLY),--only $(ONLY))
 
 .PHONY: smoke-registry
 smoke-registry: check-env ## Round-trip a record through the schema registry with the Confluent client

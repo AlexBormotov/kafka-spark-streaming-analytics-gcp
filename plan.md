@@ -293,6 +293,12 @@ Evidence against A4, 2026-11-23; owner approved both fixes the same day: user `g
   Locally the data lives in the pod (`storage.size: ""`), so schema and data were lost until
   `helm upgrade platform` re-ran the hook.
 
+**A5 (U7, 2026-11-23, approved by owner 2026-11-23).** `make dev` passes `--reset-values` to Helm;
+the U7 set listed only the `demo` and `verify-l1` targets. Evidence: `helm upgrade` without value
+flags reuses the values of the previous release. After the U7 red check the alert threshold stayed
+at 0.9 through such an upgrade. Consequence: `make dev` also returns the generator to its chart
+default of zero replicas, so it stops a running load.
+
 ## Order
 
 U0 -> U1 -> U2 -> {U3, U4} -> U5 -> U6 -> U7. U8 runs alongside from U0. Then U9, then U10.
