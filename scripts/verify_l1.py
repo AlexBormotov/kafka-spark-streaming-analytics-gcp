@@ -59,11 +59,6 @@ Q_FRESHNESS_P95_S = (
     "SELECT quantileExact(0.95)(dateDiff('millisecond', event_ts, ingest_ts)) / 1000 "
     "FROM qoe.player_events_raw WHERE ingest_ts >= fromUnixTimestamp64Milli({since:Int64})"
 )
-# Drained: the newest batch is older than 5 s and left no partition behind.
-Q_DRAINED = (
-    "SELECT max(ts) < now64(3) - 5 AND arrayMax(arrayConcat([0], mapValues(argMax(lag, ts)))) = 0 "
-    "FROM qoe.stream_progress"
-)
 Q_SNAPSHOT = (
     "SELECT (SELECT count() FROM qoe.player_events_raw), "
     "(SELECT uniqExact(event_id) FROM qoe.player_events_raw), "
@@ -135,12 +130,36 @@ class Cluster:
             "-n", "generator", "--reset-values", *sets, "--wait", "--timeout", "5m",
         )  # fmt: skip
 
-    def dlq_offsets(self) -> int:
+    def end_offsets(self, topic: str) -> dict[str, int]:
         out = self.exec(
             KAFKA_POD, "/opt/kafka/bin/kafka-get-offsets.sh",
-            "--bootstrap-server", "localhost:9092", "--topic", "player-events-dlq",
+            "--bootstrap-server", "localhost:9092", "--topic", topic,
         )  # fmt: skip
-        return sum(int(line.rsplit(":", 1)[1]) for line in out.split())
+        rows = (line.rsplit(":", 2) for line in out.split())
+        return {partition: int(offset) for _, partition, offset in rows}
+
+    def dlq_size(self) -> int:
+        return sum(self.end_offsets("player-events-dlq").values())
+
+    def drained_batch(self) -> int | None:
+        """The last committed batch once nothing is left to process, else None.
+
+        Progress rows alone are not enough: `ts` is when a batch started, so one can still be
+        running, and a stopping generator pod flushes a last few records.
+        """
+        if self.kubectl("-n", "generator", "get", "pods", "-o", "name").strip():
+            return None
+        planned, committed = (
+            max(int(n) for n in self.exec(DRIVER_POD, "ls", f"{CHECKPOINT}/{d}").split())
+            for d in ("offsets", "commits")
+        )
+        if planned != committed:
+            return None
+        offsets = self.exec(DRIVER_POD, "cat", f"{CHECKPOINT}/offsets/{planned}").splitlines()[-1]
+        if json.loads(offsets)["player-events"] != self.end_offsets("player-events"):
+            return None
+        # The listener writes a batch's progress row after its commit.
+        return planned if self.scalar(Q_BATCH_ROWS, batch=planned) else None
 
     def spark_state(self) -> str:
         return self.kubectl(
@@ -263,11 +282,11 @@ class Run:
         """
         c = self.cluster
         self.stop_load()
-        if not wait_for(lambda: c.scalar(Q_DRAINED), 180):
+        batch = wait_for(c.drained_batch, 180)
+        if batch is None:
             self.record(5, False, "Spark did not drain the topic within 180 s")
             return
         before = c.sql(Q_SNAPSHOT)
-        batch = max(int(n) for n in c.exec(DRIVER_POD, "ls", f"{CHECKPOINT}/commits").split())
         rows = c.scalar(Q_BATCH_ROWS, batch=batch)
         # With its checksum: a stale .crc makes Spark fail when it writes the commit again.
         marker = [f"{CHECKPOINT}/commits/{batch}", f"{CHECKPOINT}/commits/.{batch}.crc"]
@@ -291,7 +310,7 @@ class Run:
     def anomalies(self) -> None:
         """Checks 6-8: late events, schema v2 and malformed records in one run."""
         c = self.cluster
-        dlq_before, start = c.dlq_offsets(), time.time()
+        dlq_before, start = c.dlq_size(), time.time()
         self.load(schema="v2", late=0.02, malformed=0.01)
         time.sleep(ANOMALY_S)
         recent = c.scalar(Q_STORED_SINCE, since=ms(time.time() - 10))
@@ -314,7 +333,7 @@ class Run:
                 f"{v2:,.0f} v2 events stored; Spark {state}, {recent:,.0f} events in the last 10 s",
             )
         if self.wanted(8):
-            dead = c.dlq_offsets() - dlq_before
+            dead = c.dlq_size() - dlq_before
             self.record(
                 8,
                 dead > 0 and running,
