@@ -65,7 +65,28 @@ Work units are defined in `plan.md`.
     790 250 events, `uniqExact == count`), 7 980 late events
   - [x] CI green on 84be768 (`lint`, `test`, `test-integration`); security review fixes:
     no `readonly = 2` (table functions), `max_execution_time` bounded to 1-60 s
-- [ ] U7 `make verify-l1` and the local completion run
+- [x] U7 `make verify-l1` and the local completion run (plan amendment A5 approved 2026-11-23)
+  - [x] red check: with the alert threshold at 0.9 `verify_l1.py --only 4` fails with exit 4
+  - [x] spec completion step 2 on 2026-11-24, one chain on a deleted cluster, commit 554a24a:
+    `make up` 323 s, `make demo`, `make verify-l1` 299 s, `make down`, all exit 0
+
+    ```
+    PASS 1 throughput: 6,086 events/s stored over 121 s, target 6,000 (2 x 3,000)
+    PASS 2 freshness: p95 7.5 s over the last 2 min (limit 10 s)
+    PASS 3 negative control: Firing during the clean run: none
+    PASS 4 detection: cdn-b Firing 21 s after the generator upgrade (limit 60 s)
+    PASS 5 idempotency: batch 54 (7,500 rows) replayed; raw count, uniq, qoe_10s events and
+           rebuffers, qoe_1m events, late: unchanged (952800 rows)
+    PASS 6 late events: 6,475 late events in late_events, 0 of them in the on-time table
+    PASS 7 schema evolution: 318,475 v2 events stored; Spark RUNNING
+    PASS 8 dead letter: 3,574 records added to player-events-dlq; pipeline running: True
+    verify-l1: 8/8 passed
+    ```
+
+  - [x] two earlier full runs were 7/8: check 5 failed on faults in the script, not in the job.
+    It left the commit's `.crc` behind, and it took a batch still running for a drained topic.
+    After the fix: 3 of 3 under load, then the run above
+  - [x] CI green on 554a24a
 - [ ] U8 Terraform and cost guards
 - [ ] U9 CI images and mirror
 - [ ] U10 Cloud run, cost report and decision records
@@ -73,7 +94,6 @@ Work units are defined in `plan.md`.
 ## Later
 
 - [ ] README: explain the write path (token per partition, A2/A3) and the per-batch watermark (A3)
-- [ ] U7: local demo rate must fit one executor (~9.1 k events/s measured in U5): pick <= 8 k/s
-  or add an executor, and record the chosen rate
+- [x] U7: local demo rate is 2 x 3 000 events/s, within one executor (~9.1 k events/s, U5)
 - [ ] U8/U10: `deploy/charts/streaming/values-gke.yaml` sized for 20 k events/s nominal
   (>= 3 executors at ~9 k/s each), re-measured on the first cloud run
